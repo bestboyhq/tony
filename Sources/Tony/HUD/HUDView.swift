@@ -11,12 +11,18 @@ struct HUDView: View {
         ZStack(alignment: .bottom) {
             if dictation.phase != .idle {
                 Pill(dictation: dictation, mic: mic)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 14)
-        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.8), value: dictation.phase)
+        .animation(animation, value: dictation.phase)
+    }
+
+    /// In like a bubble, quick with a little overshoot; out without one.
+    private var animation: Animation {
+        if reduceMotion { return .easeOut(duration: 0.15) }
+        return dictation.phase == .idle ? .smooth(duration: 0.2) : .spring(duration: 0.35, bounce: 0.5)
     }
 }
 
@@ -47,7 +53,7 @@ private struct Pill: View {
                         .buttonBorderShape(.capsule)
                 }
             default:
-                Dot(heat: hovered && !reduceMotion ? 1 : 0)
+                Dot(heat: hovered && !reduceMotion ? 1 : 0, voice: dictation.phase == .listening && !reduceMotion ? mic : nil)
                     .animation(.spring(duration: hovered ? 0.6 : 0.9), value: hovered)
                 Meter(mic: mic, working: dictation.phase == .transcribing && slow, reduceMotion: reduceMotion)
                     .frame(width: 58, height: 20)
@@ -86,10 +92,16 @@ private struct Pill: View {
 }
 
 /// Grip's dot, Tony's mic head: blue through red to orange, like the icon.
-/// Hovering the pill sets it alight, like logdash's logo: its colors churn and rise until the pointer leaves.
-/// One number, the heat, follows the pointer on a spring and drives it; a cold dot is a still gradient.
+/// Speaking or hovering the pill sets it alight, like logdash's logo: its colors churn and rise with the voice and
+/// until the pointer leaves, and it swells with the voice like the bars. One number, the heat, drives the colors;
+/// a cold dot is a still gradient.
 private struct Dot: View, Animatable {
+    /// The pointer's heat, on a spring.
     var heat: Double
+    /// The mic while listening: the voice heats the dot too.
+    let voice: Mic?
+    @State private var smoother = Meter.Smoother(rise: 12, fall: 3)
+    @State private var swell = Meter.Smoother()
     nonisolated var animatableData: Double {
         get { heat }
         set { heat = newValue }
@@ -101,16 +113,13 @@ private struct Dot: View, Animatable {
     }
 
     var body: some View {
-        Group {
-            if heat > 0.001 {
-                TimelineView(.animation) { timeline in
-                    Self.mesh(at: timeline.date.timeIntervalSinceReferenceDate, heat: heat)
-                }
-            } else {
-                LinearGradient(colors: Self.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
-            }
+        TimelineView(.animation) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            let level = voice.map { Meter.loudness($0.level) } ?? 0
+            Self.mesh(at: t, heat: max(heat, smoother.next(level, at: t)))
+                .clipShape(Circle())
+                .scaleEffect(1 + 0.3 * swell.next(level, at: t))
         }
-        .clipShape(Circle())
         .frame(width: 12, height: 12)
         .accessibilityHidden(true)
     }
@@ -218,12 +227,17 @@ private struct Meter: View {
 
     /// Rises fast, falls slow, per frame.
     final class Smoother {
+        private let rise: Double, fall: Double
         private var value = 0.0
         private var last = 0.0
+        init(rise: Double = 30, fall: Double = 8) {
+            self.rise = rise
+            self.fall = fall
+        }
         func next(_ target: Double, at t: Double) -> Double {
             let dt = min(0.1, max(0, t - last))
             last = t
-            let rate = target > value ? 30.0 : 8.0
+            let rate = target > value ? rise : fall
             value += (target - value) * (1 - exp(-rate * dt))
             return value
         }
