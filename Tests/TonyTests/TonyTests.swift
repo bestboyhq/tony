@@ -1,4 +1,5 @@
 import Carbon
+import FluidAudio
 import Testing
 @testable import Tony
 
@@ -115,6 +116,31 @@ import Testing
         var p = [Float](repeating: 0.9, count: 120)
         p[100] = 0.5
         #expect(Segments.cut(p, from: 0, after: 30, force: 100) == 101)
+    }
+
+    /// "Can you send me the report", a pause, "do końca dnia": 20 windows of 256 ms, the pause in windows 6 and 7.
+    private let switched: [Float] = [Float](repeating: 1, count: 6) + [0.2, 0.2] + [Float](repeating: 1, count: 11) + [0.2]
+    private func words(from start: Double, to end: Double, confidence: Float = 1) -> [TokenTiming] {
+        stride(from: start, to: end, by: 0.24).map { TokenTiming(token: " a", tokenId: 0, startTime: $0, endTime: $0 + 0.08, confidence: confidence) }
+    }
+
+    @Test func splitsWhereALanguageGoesMissing() {
+        let runs = Segments.languages(switched, tokens: words(from: 2, to: 4.6), threshold: 0.6, window: 4096)
+        #expect(runs?.map(\.samples) == [0..<32000, 32000..<81920])
+        #expect(runs?.map(\.unsure) == [true, false])
+    }
+
+    @Test func splitsWhereALanguageComesOutUnsure() {
+        let runs = Segments.languages(switched, tokens: words(from: 0, to: 1.5) + words(from: 2, to: 4.6, confidence: 0.6), threshold: 0.6, window: 4096)
+        #expect(runs?.map(\.samples) == [0..<28672, 28672..<81920])
+        #expect(runs?.map(\.unsure) == [false, true])
+    }
+
+    @Test func keepsOneLanguageWhole() {
+        #expect(Segments.languages(switched, tokens: words(from: 0, to: 1.5) + words(from: 2, to: 4.6), threshold: 0.6, window: 4096) == nil)
+        // A long pause between words is no missing language.
+        let paused = [Float](repeating: 1, count: 6) + [Float](repeating: 0.1, count: 6) + [Float](repeating: 1, count: 6)
+        #expect(Segments.languages(paused, tokens: words(from: 0, to: 1.5) + words(from: 3.1, to: 4.6), threshold: 0.6, window: 4096) == nil)
     }
 }
 
