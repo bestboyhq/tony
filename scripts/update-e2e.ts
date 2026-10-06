@@ -27,8 +27,9 @@ const panel = (press?: string) => sh('osascript', ['-l', 'JavaScript', '-e', `
   const shown = () => p.windows().flatMap((w) => w.entireContents()).filter(id)
   let elements = shown()
   if (!elements.some((e) => id(e) === 'settings')) { icon.click(); delay(0.5); elements = shown() }
+  const ids = elements.map(id) // before the click: once the panel closes, its elements read as nothing
   ${press ? `elements.find((e) => id(e) === '${press}').click()` : 'icon.click()'}
-  elements.map(id).join(', ')`])
+  ids.join(', ')`])
 const executable = `${app}/Contents/MacOS/${NAME}`
 const quit = (signal: string) => spawn('pkill', [signal, '-f', executable])
 function running() {
@@ -107,7 +108,8 @@ try {
   } catch (e) {
     console.log(`panel: ${e}`)
   }
-  console.log(sh('log', ['show', '--last', '5m', '--info', '--style', 'compact', '--predicate', `process == "${NAME}" OR process == "Autoupdate"`]).split('\n').slice(-80).join('\n'))
+  const log = execFileSync('log', ['show', '--last', '5m', '--info', '--style', 'compact', '--predicate', 'subsystem BEGINSWITH "org.sparkle-project"'], { encoding: 'utf8', maxBuffer: 1 << 30 })
+  console.log(log.split('\n').slice(-80).join('\n'))
   throw error
 } finally {
   feed.close()
