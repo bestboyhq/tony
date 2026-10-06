@@ -66,6 +66,13 @@ struct OnboardingView: View {
             }
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Words Tony should know").font(.system(size: 13, weight: .semibold))
+                WordsField(speech: speech)
+                WordsFooter(speech: speech, detail: "Press Return after each one. Optional.")
+                    .font(.system(size: 12))
+            }
+
             TextField(ready ? "Hold \(key) and say “Hello, Tony.”" : "Your first dictation goes here", text: $practice, axis: .vertical)
                 .lineLimit(2...4)
                 .textFieldStyle(.roundedBorder)

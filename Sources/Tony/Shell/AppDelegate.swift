@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var windows: [String: NSWindow] = [:]
 
     static func main() {
-        if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--transcribe" {
+        if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--transcribe" {
             Task { exit(await transcribe(CommandLine.arguments[2])) }
             RunLoop.main.run()
         }
@@ -23,11 +23,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         withExtendedLifetime(delegate) { app.run() }
     }
 
-    /// `Tony --transcribe <audio file>`: the speech path of a dictation (model, voice activity detection,
-    /// cleanup) without the mic or the key, fed in 20 ms chunks like the mic does. For checking speech changes.
+    /// `Tony --transcribe <audio file> [-words '(Szymon, Supabase)']`: the speech path of a dictation (model,
+    /// voice activity detection, the user's words, cleanup) without the mic or the key, fed in 20 ms chunks
+    /// like the mic does. For checking speech changes.
     private static func transcribe(_ path: String) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
+        await speech.learn(Prefs.words)
         guard let session = speech.session(language: Prefs.language) else {
             print("speech not ready: \(speech.state)")
             return 1
@@ -90,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         Task { await speech.prepare() }
+        Task { await speech.learn(Prefs.words) }
 
         // Once onboarded, a missing permission is explained in the HUD and the menu instead.
         if !Prefs.onboarded { showOnboarding() }
@@ -151,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func showSettings() {
-        show("settings", title: "Tony Settings", titled: true) { SettingsView(dictation: dictation, updates: updates) }
+        show("settings", title: "Tony Settings", titled: true) { SettingsView(dictation: dictation, speech: speech, updates: updates) }
     }
 
     @objc func showAbout() {

@@ -11,7 +11,7 @@ The native macOS app around everything else.
 - Onboarding goes from install to a first dictation in a minute, without docs.
   It asks for Microphone and Accessibility, each just in time with a one-line reason and one system prompt per request.
   Status is live: Accessibility has no callback, so poll `AXIsProcessTrusted`.
-  The model downloads in parallel, and a practice field ends onboarding with a first dictation.
+  The model downloads in parallel, an optional field takes the user's words (names, jargon), and a practice field ends onboarding with a first dictation.
 - A grant can need a relaunch or a fresh event tap before it works: detect that before claiming success.
   A revoked permission is detected and explained in the HUD and the menu.
 - Launch at login through `SMAppService`, offered in onboarding and on by default.

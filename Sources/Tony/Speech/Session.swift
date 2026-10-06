@@ -19,6 +19,7 @@ actor Session {
     private let asr: AsrManager
     private let vad: VadManager
     private let language: Language?
+    private let words: Words?
     private var samples: [Float] = []
     private var vadState: VadStreamState
     /// Speech probability per VAD window.
@@ -29,10 +30,11 @@ actor Session {
     private var background: Task<Void, Never>?
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
-    init(asr: AsrManager, vad: VadManager, language: Language?) {
+    init(asr: AsrManager, vad: VadManager, language: Language?, words: Words?) {
         self.asr = asr
         self.vad = vad
         self.language = language
+        self.words = words
         vadState = VadStreamState.initial()
     }
 
@@ -85,10 +87,17 @@ actor Session {
         var audio = Array(samples[start..<end])
         if audio.count < 16000 { audio += [Float](repeating: 0, count: 16000 - audio.count) }  // the model wants at least 0.3 s
         do {
+            let started = Date()
+            async let heard = try? words?.listen(audio)
             var decoder = TdtDecoderState.make(decoderLayers: await asr.decoderLayerCount)
             let result = try await asr.transcribe(audio, decoderState: &decoder, language: language)
-            log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s in \(result.processingTime * 1000, format: .fixed(precision: 0)) ms")
-            return result.text
+            guard let words, let heard = await heard else {
+                log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s in \(result.processingTime * 1000, format: .fixed(precision: 0)) ms")
+                return result.text
+            }
+            let text = words.apply(to: result, heard: heard)
+            log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s with the user's words in \(Date().timeIntervalSince(started) * 1000, format: .fixed(precision: 0)) ms")
+            return text
         } catch {
             log.error("transcription failed: \(error.localizedDescription, privacy: .public)")
             return ""

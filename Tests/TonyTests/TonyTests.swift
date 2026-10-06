@@ -68,6 +68,31 @@ import Testing
         #expect(Cleanup.fit("Hello there.", after: "(") == "hello there.")
         #expect(Cleanup.fit("I think so.", after: "and") == " I think so.")
         #expect(Cleanup.fit("NASA called.", after: "and") == " NASA called.")
+        #expect(Cleanup.fit("Szymon called.", after: "and", keeping: ["Szymon"]) == " Szymon called.")
+        #expect(Cleanup.fit("Szymonek called.", after: "and", keeping: ["Szymon"]) == " szymonek called.")
+    }
+}
+
+@Suite struct WordsTests {
+    @Test func swapsKeepPunctuation() {
+        let text = "Ask Simon, then fluid audio."
+        let simon = text.utf8.count - "Simon, then fluid audio.".utf8.count
+        let fluid = text.utf8.count - "fluid audio.".utf8.count
+        #expect(Words.replace(text, [(simon..<simon + 5, "Szymon"), (fluid..<fluid + 11, "FluidAudio")]) == "Ask Szymon, then FluidAudio.")
+        #expect(Words.replace("a b", [(0..<3, "x"), (2..<3, "y")]) == "a y")  // of two overlapping swaps, one lands
+    }
+
+    @Test func respellsWholeWordsOnly() {
+        #expect(Words.respell("I use tailscale, TAILSCALE and tailscaled.", ["Tailscale"]) == "I use Tailscale, Tailscale and tailscaled.")
+        #expect(Words.respell("Ping bestboyhq.", ["bestboyhq", "C++"]) == "Ping bestboyhq.")
+    }
+
+    @Test func inflectedFormsStay() {
+        #expect(Words.inflects("Mokotowie", "Mokotów"))
+        #expect(Words.inflects("Tailscales", "Tailscale"))
+        #expect(!Words.inflects("Mokotow", "Mokotów"))
+        #expect(!Words.inflects("tail scale", "Tailscale"))
+        #expect(!Words.inflects("Simon", "Szymon"))
     }
 }
 

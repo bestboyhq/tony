@@ -63,6 +63,8 @@ Across 25 languages (FLEURS), Ultra cuts the error rate from 11.6% to 9.6%, and 
   Switch between them without touching a setting.
 - **Punctuation and capitals included.** The model writes them, so the text reads like you typed it.
 - **No "um".** Filler words come out in every language Tony speaks, and the sentence around them keeps its commas and capitals.
+- **Your words, spelled your way.** Add the names, brands, and jargon you use, and "super base" lands as Supabase.
+  A second, small model checks each one against your voice, so a word swaps in only where you said it.
 - **Fits the cursor.** Tony reads the text before the cursor: a space after a word, none after an opening bracket, and no capital in the middle of a sentence.
 - **Silence types nothing.** Voice activity detection trims the quiet, so a cough or a quiet room never turns into a phantom sentence.
 
@@ -93,7 +95,7 @@ It is most of what you will ever see of Tony, so it gets the attention.
 
 Audio and text stay on your Mac, and audio stays in memory: it is never written to disk.
 There is no account and no telemetry.
-Tony goes online only to download the speech model once (about 600 MB) and to check for updates.
+Tony goes online only to download the speech model once (about 600 MB), the model for your words once (about 100 MB) if you add any, and to check for updates.
 
 ## Use it
 
@@ -107,7 +109,7 @@ Prefer another key?
 Pick right ⌥, right ⌘, or any modifier in Settings.
 When fn is your key, Tony offers to stop it from also opening the emoji picker.
 
-Settings has three choices: the key, the mic, and the language.
+Settings has four choices: the key, the mic, the language, and your words.
 Those are where people really differ.
 Everything else is a tuned default.
 
@@ -153,6 +155,7 @@ Pull request titles follow [Conventional Commits](https://www.conventionalcommit
 ## Credits
 
 - [Parakeet TDT 0.6B v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) by NVIDIA, post-trained as [Parakeet Ultra](https://huggingface.co/moondream/parakeet-ultra) by Moondream, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- [Parakeet CTC 110M](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) by NVIDIA, for your words, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 - [Silero VAD](https://github.com/snakers4/silero-vad) by Silero Team, MIT
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) by FluidInference, Apache 2.0
 - [Sparkle](https://sparkle-project.org), MIT

@@ -1,5 +1,5 @@
+import AppKit
 import FluidAudio
-import Foundation
 import Observation
 import OSLog
 
@@ -19,8 +19,14 @@ final class Speech {
     static let version = AsrModelVersion.ultra
 
     private(set) var state = State.idle
+    /// The user's words are on their way: their model downloading, loading, or warming up.
+    private(set) var learning = false
     @ObservationIgnored private var asr: AsrManager?
     @ObservationIgnored private var vad: VadManager?
+    /// The user's words, ready to listen for; nil while there are none.
+    @ObservationIgnored private var words: Words?
+    @ObservationIgnored private var wordList: [String] = []
+    @ObservationIgnored private var ctc: Task<CtcModels, Error>?
     @ObservationIgnored private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
     var isReady: Bool { state == .ready }
@@ -62,7 +68,31 @@ final class Speech {
 
     func session(language: Language?) -> Session? {
         guard let asr, let vad else { return nil }
-        return Session(asr: asr, vad: vad, language: language)
+        return Session(asr: asr, vad: vad, language: language, words: words)
+    }
+
+    /// Teaches Tony the user's words. Their model (~100 MB) downloads the first time there are any.
+    func learn(_ list: [String]) async {
+        wordList = list
+        guard !list.isEmpty else {
+            words = nil
+            learning = false
+            return
+        }
+        learning = true
+        let respelled = list.filter {
+            NSSpellChecker.shared.checkSpelling(of: $0.lowercased(), startingAt: 0, language: "en", wrap: false, inSpellDocumentWithTag: 0, wordCount: nil).location != NSNotFound
+        }
+        do {
+            if ctc == nil { ctc = Task { try await CtcModels.downloadAndLoad() } }
+            let words = try await Words(list, respelled: respelled, models: ctc!.value)
+            _ = try? await words.listen([Float](repeating: 0, count: 16000))  // the first run pays for Neural Engine setup: pay it now
+            if wordList == list { self.words = words }  // a newer list may have landed meanwhile
+        } catch {
+            ctc = nil  // try again with the next change or launch
+            log.error("words failed: \(error.localizedDescription, privacy: .public)")
+        }
+        if wordList == list { learning = false }
     }
 
     private static func plain(_ error: Error) -> String {
