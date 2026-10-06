@@ -195,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         case .openMicrophone: Permissions.openPrivacy("Privacy_Microphone")
         case .openSettings: showSettings()
         case .retryModel: Task { await speech.prepare() }
+        case .relaunch: Permissions.relaunch()
         }
     }
 }

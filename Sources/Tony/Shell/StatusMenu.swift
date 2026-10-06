@@ -52,6 +52,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     /// One line on what Tony is doing, and the action that fixes it when something is wrong.
     private var statusLine: (String, (() -> Void)?) {
         let permissions = app.permissions
+        if Permissions.moved { return ("Relaunch Tony to use the microphone", Permissions.home == nil ? nil : { Permissions.relaunch() }) }
         if permissions.microphone != .authorized { return ("Tony needs microphone access…", { self.app.showOnboarding() }) }
         if permissions.needsRelaunch { return ("Relaunch Tony to finish setup", { Permissions.relaunch() }) }
         if !permissions.accessibility { return ("Tony needs Accessibility access…", { self.app.showOnboarding() }) }
