@@ -228,12 +228,13 @@ nonisolated final class Mic: @unchecked Sendable {
         var samples: [Float] = []
         capture.ring.drain(into: &samples)
         guard let converter, let deviceFormat, !samples.isEmpty || end else { return }
-        let input = AVAudioPCMBuffer(pcmFormat: deviceFormat, frameCapacity: AVAudioFrameCount(max(samples.count, 1)))!
+        // Unsafe-shared with convert's input block (as is `given`): it is @Sendable but runs synchronously inside convert.
+        nonisolated(unsafe) let input = AVAudioPCMBuffer(pcmFormat: deviceFormat, frameCapacity: AVAudioFrameCount(max(samples.count, 1)))!
         samples.withUnsafeBufferPointer { input.floatChannelData![0].update(from: $0.baseAddress!, count: samples.count) }
         input.frameLength = AVAudioFrameCount(samples.count)
         let capacity = AVAudioFrameCount(Double(samples.count) * Self.format.sampleRate / deviceFormat.sampleRate) + 1024
         let output = AVAudioPCMBuffer(pcmFormat: Self.format, frameCapacity: capacity)!
-        var given = samples.isEmpty
+        nonisolated(unsafe) var given = samples.isEmpty
         var error: NSError?
         converter.convert(to: output, error: &error) { _, status in
             if given {

@@ -95,8 +95,9 @@ private struct Dot: View, Animatable {
         set { heat = newValue }
     }
 
-    private static let colors = [0x1957FA, 0x8B67A8, 0xE44730, 0xF04600, 0xFB8600].map { hex in
-        Color(.displayP3, red: Double(hex >> 16 & 0xFF) / 255, green: Double(hex >> 8 & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    private static let colors: [Color] = [0x1957FA, 0x8B67A8, 0xE44730, 0xF04600, 0xFB8600].map { (hex: Int) -> Color in
+        let red = Double(hex >> 16 & 0xFF), green = Double(hex >> 8 & 0xFF), blue = Double(hex & 0xFF)
+        return Color(.displayP3, red: red / 255, green: green / 255, blue: blue / 255)
     }
 
     var body: some View {

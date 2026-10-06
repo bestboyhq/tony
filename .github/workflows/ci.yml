@@ -21,7 +21,7 @@ jobs:
       - id: image
         run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       # Dependencies and their build products: a function of the pins and the runner image (Xcode, SDK).
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .build
           key: build-${{ steps.image.outputs.id }}-${{ hashFiles('Package.resolved') }}
@@ -62,7 +62,7 @@ jobs:
           node-version: 24
       - id: image
         run: echo "id=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .build
           key: build-${{ steps.image.outputs.id }}-${{ hashFiles('Package.resolved') }}
