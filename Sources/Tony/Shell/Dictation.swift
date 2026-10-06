@@ -156,7 +156,7 @@ final class Dictation {
             guard self.generation == generation else {
                 // A newer dictation is listening: land this one, and leave the HUD to the new one.
                 if !text.isEmpty {
-                    let fitted = Cleanup.fit(text, after: before)
+                    let fitted = Cleanup.fit(text, after: before, keeping: Prefs.words)
                     lastText = fitted
                     if !AXIsProcessTrusted() || !Paste.paste(fitted) { carry = [carry, fitted].compactMap { $0 }.joined(separator: " ") }
                 }
@@ -166,7 +166,7 @@ final class Dictation {
             let carried = carry
             carry = nil
             if let carried {
-                return insert(text.isEmpty ? carried : carried + Cleanup.fit(text, after: " "))
+                return insert(text.isEmpty ? carried : carried + Cleanup.fit(text, after: " ", keeping: Prefs.words))
             }
             if text.isEmpty {
                 if summary.silent {
@@ -177,7 +177,7 @@ final class Dictation {
                 }
                 return
             }
-            insert(Cleanup.fit(text, after: before))
+            insert(Cleanup.fit(text, after: before, keeping: Prefs.words))
         }
     }
 

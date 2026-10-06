@@ -7,6 +7,7 @@ enum Prefs {
     static let micKey = "mic"
     static let languageKey = "language"
     static let onboardedKey = "onboarded"
+    static let wordsKey = "words"
 
     static var hotkey: HotkeyKey {
         let code = UserDefaults.standard.object(forKey: hotkeyKey) as? Int
@@ -21,6 +22,12 @@ enum Prefs {
     /// The spoken language as a hint for the model; nil detects it.
     static var language: Language? {
         UserDefaults.standard.string(forKey: languageKey).flatMap(Language.init(rawValue:))
+    }
+
+    /// Names, brands, and jargon the user wants spelled their way.
+    static var words: [String] {
+        get { UserDefaults.standard.stringArray(forKey: wordsKey) ?? [] }
+        set { UserDefaults.standard.set(newValue, forKey: wordsKey) }
     }
 
     static var onboarded: Bool {

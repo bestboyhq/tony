@@ -27,6 +27,7 @@ struct AboutView: View {
             Divider()
             VStack(alignment: .leading, spacing: 6) {
                 credit("Parakeet TDT 0.6B v3", "by NVIDIA, post-trained as Parakeet Ultra by Moondream and converted to Core ML by FluidInference.", license: "CC\u{00A0}BY\u{00A0}4.0", url: "https://creativecommons.org/licenses/by/4.0/")
+                credit("Parakeet CTC 110M", "by NVIDIA, converted to Core ML by FluidInference, listens for your words.", license: "CC\u{00A0}BY\u{00A0}4.0", url: "https://creativecommons.org/licenses/by/4.0/")
                 credit("Silero VAD", "by Silero Team, for voice activity detection.", license: "MIT", url: "https://github.com/snakers4/silero-vad")
                 credit("FluidAudio", "by FluidInference, runs the models on the Neural Engine.", license: "Apache\u{00A0}2.0", url: "https://github.com/FluidInference/FluidAudio")
                 credit("Sparkle", "by the Sparkle Project, for updates.", license: "MIT", url: "https://sparkle-project.org")

@@ -30,7 +30,7 @@ Every domain obeys these invariants:
 - **Works everywhere.** Native apps, browsers, Electron apps, and terminals, on every keyboard layout, Dvorak and Cyrillic included.
 - **Beautiful.** Native look, pixel-perfect, smooth at 120 Hz, light and dark, with Reduce Motion and VoiceOver respected.
 - **Options behind tuned defaults.** Tony works with zero setup.
-  An option exists where people really differ (hotkey, mic, language); everything else gets one tuned default.
+  An option exists where people really differ (hotkey, mic, language, the user's words); everything else gets one tuned default.
 
 ## License: AGPL-3.0
 
@@ -40,10 +40,10 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
   GPL-2.0-only, SSPL, "source available", non-commercial, closed SDKs, and unlicensed code are out.
   Copied code keeps its notice.
 - Models are data, but their license binds us too: it must allow commercial use and redistribution.
-  Parakeet Ultra is CC-BY-4.0, which requires credit; Silero VAD is MIT.
+  Parakeet Ultra and Parakeet CTC 110M are CC-BY-4.0, which requires credit; Silero VAD is MIT.
 - Tony ships as a Developer ID signed, notarized download that updates itself.
   The Mac App Store is out: its terms conflict with the AGPL.
-- The About window shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
+- The About window shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Parakeet CTC 110M (NVIDIA), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
 - CI builds every release from a tagged commit, so each binary's source is public.
 - A server we write for Tony (sync, cloud features) is AGPL too, lives in this repo, and offers its source to its users (AGPL section 13).
 
@@ -52,7 +52,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - Native Swift 6 with SwiftUI, and AppKit where SwiftUI falls short: status item, non-activating panels, event taps.
 - Swift Package Manager only: `Package.swift` and plain files diff and merge cleanly, an Xcode project's `.pbxproj` does not.
   A script assembles, signs, and notarizes the `.app`.
-- Speech: NVIDIA Parakeet TDT v3, post-trained by Moondream as Parakeet Ultra, on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML), with Silero voice activity detection.
+- Speech: NVIDIA Parakeet TDT v3, post-trained by Moondream as Parakeet Ultra, on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML), with Silero voice activity detection, and Parakeet CTC 110M listening for the user's words.
 - Swift 6 with `MainActor` as the default isolation: code that runs off the main thread (the event tap, the audio thread, speech) says `nonisolated` or is an actor.
 - Updates: [Sparkle 2](https://sparkle-project.org) from GitHub Releases.
 - macOS 15+, Apple silicon only: the model runs on the Neural Engine.

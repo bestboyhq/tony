@@ -43,16 +43,17 @@ nonisolated enum Cleanup {
     }
 
     /// Fits text to what is before the cursor: a space after a word, none at a line start or after an
-    /// opening bracket, and no capital mid-sentence. `before` nil means the app didn't say, so the text
-    /// goes in as transcribed.
-    static func fit(_ text: String, after before: String?) -> String {
+    /// opening bracket, and no capital mid-sentence, unless the text starts with one of the user's `words`.
+    /// `before` nil means the app didn't say, so the text goes in as transcribed.
+    static func fit(_ text: String, after before: String?, keeping words: [String] = []) -> String {
         guard let before, !text.isEmpty else { return text }
         guard let last = before.last else { return text }  // the start of the field
         var text = text
         let lastVisible = before.last { !$0.isWhitespace }
         let sentenceStart = lastVisible == nil || ".!?".contains(lastVisible!) || before.last!.isNewline
-        if !sentenceStart, let first = text.split(separator: " ").first, looksCapitalizedOnlyForTheSentence(first) {
-            // ponytail: a proper noun at the start ("Simon") gets lowercased too; a names list would fix it.
+        let startsWithWord = words.contains { text.hasPrefix($0) && !(text.dropFirst($0.count).first?.isLetter ?? false) }
+        if !sentenceStart, !startsWithWord, let first = text.split(separator: " ").first, looksCapitalizedOnlyForTheSentence(first) {
+            // ponytail: a proper noun at the start that isn't in the user's words ("Simon") gets lowercased too.
             text = text.prefix(1).lowercased() + text.dropFirst()
         }
         if !last.isWhitespace, !"([{\"'“‘/-".contains(last) {
