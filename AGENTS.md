@@ -40,10 +40,10 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
   GPL-2.0-only, SSPL, "source available", non-commercial, closed SDKs, and unlicensed code are out.
   Copied code keeps its notice.
 - Models are data, but their license binds us too: it must allow commercial use and redistribution.
-  Parakeet v3 is CC-BY-4.0, which requires credit.
+  Parakeet Ultra is CC-BY-4.0, which requires credit; Silero VAD is MIT.
 - Tony ships as a Developer ID signed, notarized download that updates itself.
   The Mac App Store is out: its terms conflict with the AGPL.
-- The About window shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA), FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
+- The About window shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
 - CI builds every release from a tagged commit, so each binary's source is public.
 - A server we write for Tony (sync, cloud features) is AGPL too, lives in this repo, and offers its source to its users (AGPL section 13).
 
@@ -52,7 +52,8 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - Native Swift 6 with SwiftUI, and AppKit where SwiftUI falls short: status item, non-activating panels, event taps.
 - Swift Package Manager only: `Package.swift` and plain files diff and merge cleanly, an Xcode project's `.pbxproj` does not.
   A script assembles, signs, and notarizes the `.app`.
-- Speech: NVIDIA Parakeet TDT v3 on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML), with its voice activity detection.
+- Speech: NVIDIA Parakeet TDT v3, post-trained by Moondream as Parakeet Ultra, on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML), with Silero voice activity detection.
+- Swift 6 with `MainActor` as the default isolation: code that runs off the main thread (the event tap, the audio thread, speech) says `nonisolated` or is an actor.
 - Updates: [Sparkle 2](https://sparkle-project.org) from GitHub Releases.
 - macOS 15+, Apple silicon only: the model runs on the Neural Engine.
 
@@ -64,7 +65,12 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 
 ## Commands
 
-- `node --test 'scripts/*.test.ts'` tests the release tooling (Node 24).
+- `swift build` builds, `swift test` runs the unit tests.
+- `node scripts/package.ts --debug` builds `release/Tony.app`, signed with the Developer ID when the Mac has it, so permissions survive rebuilds.
+  `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
+- `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
+- `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
+- `node --test 'scripts/*.test.ts'` tests the release tooling and that `build/Tony.icon` matches `scripts/icon.ts` (Node 24).
 - Add each new command here in the commit that adds it.
 
 ## Releases and updates
@@ -75,11 +81,12 @@ Ported from Grip, where each piece is proven.
   PR titles must be Conventional Commits (`.github/workflows/pr-title.yml`), since the squash commit takes the title and `scripts/version.ts` picks the next version from it.
 - Versions live in `v*` tags.
   CI writes the version into both `CFBundleShortVersionString` and `CFBundleVersion`, since Sparkle compares `CFBundleVersion`.
-- The release job (in Grip, the `release` job of `.github/workflows/ci.yml`): import the Developer ID certificate into a temporary keychain, build, sign with the hardened runtime, notarize and staple the DMG, sign the update zip with Sparkle's EdDSA key, generate `appcast.xml`, run the update end-to-end test, then `gh release create v<version>` with the DMG, the zip, and the appcast.
+- The release job (`release` in `.github/workflows/ci.yml`, ported from Grip): import the Developer ID certificate into a temporary keychain, build, sign with the hardened runtime, notarize and staple the DMG, sign the update zip with Sparkle's EdDSA key, generate `appcast.xml`, run the update end-to-end test, then `gh release create v<version>` with the DMG, the zip, and the appcast.
 - Sparkle reads `https://github.com/bestboyhq/tony/releases/latest/download/appcast.xml`, so the repo must be public before the first release.
 - Secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` (the same values as Grip), and `SPARKLE_PRIVATE_KEY`, whose public half is `SUPublicEDKey` in `Info.plist`.
   Team ID `59F3NS99CS`, bundle id `com.bestboyhq.tony`.
-- An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, installs it, and relaunches as 0.0.2 (in Grip, `scripts/update-e2e.ts`).
+- An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, installs it, and relaunches as 0.0.2 (`scripts/update-e2e.ts`).
+  It signs with a throwaway EdDSA key, so the real one never leaves CI's secrets.
   CI runs it before every release.
 
 ## Code: lazy senior developer

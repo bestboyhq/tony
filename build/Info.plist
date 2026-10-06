@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- scripts/package.ts fills in the version, and for test builds the name, id, feed, and key. -->
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleExecutable</key>
+  <string>Tony</string>
+  <key>CFBundleIconFile</key>
+  <string>Tony</string>
+  <key>CFBundleIconName</key>
+  <string>Tony</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.bestboyhq.tony</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>Tony</string>
+  <key>CFBundleDisplayName</key>
+  <string>Tony</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.0.0</string>
+  <key>CFBundleVersion</key>
+  <string>0.0.0</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.productivity</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>15.0</string>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © 2026 Best Boy. AGPL-3.0.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Tony hears you only while you hold the dictation key. Audio stays on this Mac.</string>
+  <key>NSPrincipalClass</key>
+  <string>NSApplication</string>
+  <key>SUFeedURL</key>
+  <string>https://github.com/bestboyhq/tony/releases/latest/download/appcast.xml</string>
+  <key>SUPublicEDKey</key>
+  <string>OIlZz6tKewfHnWHDsLhrjnoZWlVhgwoX/jNt12l93QA=</string>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUAutomaticallyUpdate</key>
+  <true/>
+  <key>SUScheduledCheckInterval</key>
+  <integer>14400</integer>
+</dict>
+</plist>

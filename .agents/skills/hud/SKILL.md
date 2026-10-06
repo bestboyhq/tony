@@ -16,6 +16,8 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
   An error is one plain sentence with at most one action.
 - It sits at the bottom center of the display with the focused window, above the Dock.
 - Motion uses springs and stays smooth at 120 Hz on ProMotion; Reduce Motion swaps movement for fades.
+- The pill never blocks a click meant for the app beneath it: only a notice's action button takes the mouse.
+  Hover, which sets the dot's colors churning, is read from a global mouse monitor, not from mouse events.
 - Light and dark, vibrancy that matches macOS, and Increase Contrast and Reduce Transparency respected.
 - VoiceOver announces listening, done, and errors.
 - Crisp at every scale factor, with a steady layout across states.

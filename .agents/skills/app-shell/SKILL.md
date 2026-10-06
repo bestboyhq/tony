@@ -22,7 +22,8 @@ The native macOS app around everything else.
   Installs wait until Tony is idle.
 - Sparkle cannot replace an app running from the disk image or from Downloads (App Translocation): on first launch, offer to move Tony to Applications.
 - Full updates only: the app is a few MB, and the model downloads separately.
-- The app icon is `build/Tony.icon` (Icon Composer), its one source: Grip's gradient dot as the mic head over a grey glass cradle, so the two read as siblings.
+- The app icon is `build/Tony.icon` (Icon Composer), its one source: a capsule mic head in the color sweep of Grip's dot, over a grey glass smile on a short stem, so the two read as siblings.
+  `scripts/icon.ts` draws its artwork; change the numbers there, not the SVGs.
   The menu bar icon is a template image of the same mark.
 - Crash reports stay on disk, and system error codes become plain-language messages.
 - Quitting during a dictation inserts it first.
