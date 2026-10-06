@@ -18,15 +18,17 @@ const app = join(dir, 'Applications', `${NAME}.app`) // in an Applications folde
 const sh = (cmd: string, args: string[]) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 const run = (cmd: string, args: string[]) => execFileSync(cmd, args, { stdio: 'inherit' })
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-// Opens the menu bar panel and returns its buttons' accessibility labels, then clicks the one labeled
-// `press`, or closes the panel again.
+// Opens the menu bar panel and returns the accessibility identifiers in it, then clicks the element with
+// identifier `press`, or closes the panel again. Identifiers, since System Events can't read a SwiftUI
+// button's label: its description is "button".
 const panel = (press?: string) => sh('osascript', ['-l', 'JavaScript', '-e', `
   const p = Application('System Events').processes['${NAME}'], icon = p.menuBars[1].menuBarItems[0]
-  const open = () => p.windows().find((w) => w.subrole() === 'AXSystemDialog')
-  if (!open()) { icon.click(); delay(0.3) }
-  const buttons = open().entireContents().filter((e) => ['AXButton', 'AXMenuButton'].includes(e.role()))
-  ${press ? `buttons.find((b) => b.description() === '${press}').click()` : 'icon.click()'}
-  buttons.map((b) => b.description()).join(', ')`])
+  const id = (e) => { try { return e.attributes.byName('AXIdentifier').value() } catch (_) { return '' } }
+  const shown = () => p.windows().flatMap((w) => w.entireContents()).filter(id)
+  let elements = shown()
+  if (!elements.some((e) => id(e) === 'settings')) { icon.click(); delay(0.5); elements = shown() }
+  ${press ? `elements.find((e) => id(e) === '${press}').click()` : 'icon.click()'}
+  elements.map(id).join(', ')`])
 const executable = `${app}/Contents/MacOS/${NAME}`
 const quit = (signal: string) => spawn('pkill', [signal, '-f', executable])
 function running() {
@@ -39,12 +41,15 @@ function running() {
 const version = () => sh('defaults', ['read', join(app, 'Contents/Info.plist'), 'CFBundleShortVersionString'])
 
 async function until(what: string, test: () => boolean, ms = 180_000) {
+  let last: unknown
   for (const end = Date.now() + ms; Date.now() < end; await sleep(1000)) {
     try {
       if (test()) return
-    } catch {} // not there yet: no process, no panel
+    } catch (error) {
+      last = error // not there yet: no process, no panel
+    }
   }
-  throw new Error(`timed out waiting for ${what}`)
+  throw new Error(`timed out waiting for ${what}`, { cause: last })
 }
 
 // The app must be gone before its files: deleting a starting app crashes it.
@@ -90,11 +95,20 @@ try {
   sh('defaults', ['write', ID, 'onboarded', '-bool', 'true']) // no onboarding window in the way
   spawn('open', ['-g', app], { stdio: 'ignore', detached: true }).unref()
   await until('0.0.1 to start', running)
-  await until('Restart to Update in the panel', () => panel().includes('Restart to Update'))
-  console.log(`panel: ${panel('Restart to Update')}`)
+  await until('Restart to Update in the panel', () => panel().includes('restart-to-update'))
+  console.log(`panel: ${panel('restart-to-update')}`)
   await until('0.0.2 to be installed', () => version() === '0.0.2')
-  await until('0.0.2 to relaunch', () => running() && panel().includes('Settings'))
+  await until('0.0.2 to relaunch', () => running() && panel().includes('settings'))
   console.log(`ok: 0.0.1 updated itself to ${version()} and relaunched`)
+} catch (error) {
+  // What the app saw, since CI shows nothing else.
+  try {
+    console.log(`panel: ${panel()}`)
+  } catch (e) {
+    console.log(`panel: ${e}`)
+  }
+  console.log(sh('log', ['show', '--last', '5m', '--info', '--style', 'compact', '--predicate', `process == "${NAME}" OR process == "Autoupdate"`]).split('\n').slice(-80).join('\n'))
+  throw error
 } finally {
   feed.close()
   await cleanup()

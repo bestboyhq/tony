@@ -148,6 +148,7 @@ private struct Home: View {
                 .help("Settings")
                 .keyboardShortcut(",")
                 .accessibilityLabel("Settings")
+                .accessibilityIdentifier("settings")
                 Menu {
                     Button("About Tony") {
                         menuBar.close()
@@ -174,6 +175,7 @@ private struct Home: View {
                     Button("Restart") { app.updates.restartToUpdate() }
                         .controlSize(.small)
                         .accessibilityLabel("Restart to Update")
+                        .accessibilityIdentifier("restart-to-update")
                 }
                 .padding(10)
                 .card()
