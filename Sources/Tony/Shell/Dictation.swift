@@ -19,7 +19,7 @@ final class Dictation {
     }
 
     enum Action: Equatable {
-        case copy(String), openAccessibility, openMicrophone, openSettings, retryModel
+        case copy(String), openAccessibility, openMicrophone, openSettings, retryModel, relaunch
 
         var title: String {
             switch self {
@@ -27,6 +27,7 @@ final class Dictation {
             case .openAccessibility, .openMicrophone: "Open Settings"
             case .openSettings: "Settings"
             case .retryModel: "Try Again"
+            case .relaunch: "Relaunch"
             }
         }
     }
@@ -105,6 +106,9 @@ final class Dictation {
         guard !isBusy || phase == .transcribing else { return }
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
             return fail("Tony needs access to the microphone.", .openMicrophone)
+        }
+        guard !Permissions.moved else {
+            return fail("Tony was moved, so macOS mutes its mic.", Permissions.home == nil ? nil : .relaunch)
         }
         guard let session = speech.session(language: language) else {
             switch speech.state {

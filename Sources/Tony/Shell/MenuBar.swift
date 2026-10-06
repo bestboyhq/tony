@@ -214,7 +214,9 @@ private struct Home: View {
     /// What Tony is doing, and the fix when something is wrong.
     @ViewBuilder private var status: some View {
         let permissions = app.permissions
-        if permissions.microphone != .authorized {
+        if Permissions.moved {
+            problem("Relaunch Tony to use the microphone.", fix: Permissions.home == nil ? nil : "Relaunch") { Permissions.relaunch() }
+        } else if permissions.microphone != .authorized {
             problem("Tony needs the microphone.", fix: "Allow", onboarding)
         } else if permissions.needsRelaunch {
             problem("Relaunch Tony to finish setup.", fix: "Relaunch") { Permissions.relaunch() }

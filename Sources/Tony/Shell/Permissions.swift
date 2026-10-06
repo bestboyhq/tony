@@ -69,11 +69,22 @@ final class Permissions {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)")!)
     }
 
+    /// Tony's app was moved or deleted while it runs. macOS then mutes its mic: the mic sends only zeros,
+    /// yet reads as authorized, until Tony is opened again.
+    static var moved: Bool { !FileManager.default.fileExists(atPath: Bundle.main.bundlePath) }
+
+    /// Where Tony is now: once moved, wherever Launch Services found it; nil once deleted.
+    // ponytail: with several copies installed, Launch Services picks the newest, not always the moved one;
+    // follow the bundle from launch (an O_EVTONLY fd and F_GETPATH) if that ever matters.
+    static var home: URL? {
+        moved ? NSWorkspace.shared.urlForApplication(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "") : Bundle.main.bundleURL
+    }
+
     static func relaunch() {
-        let path = Bundle.main.bundlePath
+        guard let home else { return }
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "sleep 0.5; /usr/bin/open \"$0\"", path]
+        task.arguments = ["-c", "sleep 0.5; /usr/bin/open \"$0\"", home.path]
         try? task.run()
         NSApp.terminate(nil)
     }
