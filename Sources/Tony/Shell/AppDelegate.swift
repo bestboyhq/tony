@@ -9,7 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let updates = Updates()
     private(set) lazy var dictation = Dictation(speech: speech)
     private var hud: HUD!
-    private var menu: StatusMenu!
+    private var menuBar: MenuBar!
     private var windows: [String: NSWindow] = [:]
 
     static func main() {
@@ -58,11 +58,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         dictation.language = Prefs.language
         dictation.onAction = { [weak self] in self?.perform($0) }
         hud = HUD(dictation: dictation, mic: dictation.mic)
-        menu = StatusMenu(app: self)
+        menuBar = MenuBar(app: self)
         let hudUpdate = dictation.onPhase
         dictation.onPhase = { [weak self] phase in
             hudUpdate?(phase)
-            self?.menu.setListening(phase == .listening || phase == .transcribing)
+            self?.menuBar.setListening(phase == .listening || phase == .transcribing)
             if phase == .idle { self?.updates.idle() }
         }
 
@@ -98,9 +98,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if !Prefs.onboarded { showOnboarding() }
     }
 
-    /// Opening Tony again (Finder, Spotlight) while it runs: the window it needs.
+    /// Opening Tony again (Finder, Spotlight) while it runs: the menu bar panel, or onboarding until it's done.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if Prefs.onboarded { showSettings() } else { showOnboarding() }
+        if Prefs.onboarded { menuBar.show(.home) } else { showOnboarding() }
         return false
     }
 
@@ -154,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func showSettings() {
-        show("settings", title: "Tony Settings", titled: true) { SettingsView(dictation: dictation, speech: speech, updates: updates) }
+        menuBar.show(.settings)
     }
 
     @objc func showAbout() {
@@ -162,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// The dock icon shows only while a window is open.
-    private func show<Content: View>(_ id: String, title: String, titled: Bool = false, @ViewBuilder content: () -> Content) {
+    private func show<Content: View>(_ id: String, title: String, @ViewBuilder content: () -> Content) {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         if let window = windows[id] {
@@ -171,10 +171,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         let window = NSWindow(contentViewController: NSHostingController(rootView: content()))
         window.title = title
-        window.styleMask = titled ? [.titled, .closable] : [.titled, .closable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = !titled
-        window.titleVisibility = titled ? .visible : .hidden
-        window.isMovableByWindowBackground = !titled
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()

@@ -89,7 +89,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
+        .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: hotkeyCode) { dictation.hotkey.setKey(HotkeyKey(keyCode: UInt16(hotkeyCode))) }
         .onChange(of: mic) { dictation.mic.use(uid: mic.isEmpty ? nil : mic) }

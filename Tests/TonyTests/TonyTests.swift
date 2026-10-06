@@ -158,3 +158,26 @@ import Testing
         #expect(Paste.vKeyCode(layout: layout("com.apple.keylayout.Polish")) == CGKeyCode(kVK_ANSI_V))
     }
 }
+
+@Suite struct StatsTests {
+    @Test func countsADictation() {
+        var stats = Stats()
+        stats.record(raw: "Um, ask Szymon about Tailscale.", text: "Ask Szymon about Tailscale.", yourWords: ["Szymon", "Tailscale"],
+                     seconds: 2, latency: 90, app: "com.apple.Notes", on: 10)
+        stats.record(raw: "Done.", text: "Done.", yourWords: [], seconds: 1, latency: 110, app: "com.apple.Notes", on: 10)
+        #expect(stats.total == Stats.Day(dictations: 2, words: 5, seconds: 3, fillers: 1, yourWords: 2))
+        #expect(stats.wordsPerMinute == 100)
+        #expect(stats.apps == ["com.apple.Notes": 5])
+        #expect(stats.medianLatency == 110)
+        #expect(stats.secondsSaved == 4.5)  // 5 words typed at 40 wpm take 7.5 s
+    }
+
+    @Test func streaks() {
+        var stats = Stats()
+        for day in [1, 2, 3, 7, 8] { stats.days[day] = Stats.Day(dictations: 1) }
+        #expect(stats.streak(on: 8) == 2)
+        #expect(stats.streak(on: 9) == 2)  // alive until a whole day passes
+        #expect(stats.streak(on: 10) == 0)
+        #expect(stats.longestStreak == 3)
+    }
+}

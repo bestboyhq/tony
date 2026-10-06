@@ -36,8 +36,9 @@ final class Dictation {
         didSet { if phase != oldValue { onPhase?(phase) } }
     }
     private(set) var handsFree = false
-    /// The last dictation, in memory only, for the menu to copy or paste again.
+    /// The last dictation, in memory only, for the menu bar to copy or paste again.
     private(set) var lastText: String?
+    private(set) var stats = Stats.load()
 
     @ObservationIgnored let mic = Mic()
     @ObservationIgnored private(set) var hotkey: Hotkey!
@@ -55,6 +56,7 @@ final class Dictation {
     @ObservationIgnored private var dismiss: Task<Void, Never>?
     /// Text of an earlier dictation that couldn't land while a newer one listened: it lands with the newer one.
     @ObservationIgnored private var carry: String?
+    @ObservationIgnored private var keyDown = ContinuousClock.now
     /// Bumped by every start and cancel, so a stale dictation never touches the current one.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private let log = Logger(subsystem: "com.bestboyhq.tony", category: "dictation")
@@ -122,6 +124,7 @@ final class Dictation {
         let previous = finishing
         finishing = nil
         self.session = session
+        keyDown = .now
         handsFree = false
         phase = .listening
         hotkey.dictating.store(true, ordering: .relaxed)
@@ -147,6 +150,8 @@ final class Dictation {
     private func stop() {
         guard phase == .listening, let session else { return }
         let generation = generation
+        let keyUp = ContinuousClock.now
+        let spoken = keyDown.duration(to: keyUp)
         phase = .transcribing
         let stopped = mic.stop()
         let (feed, feeder, cursor) = (feed, feeder, cursor)
@@ -154,9 +159,11 @@ final class Dictation {
             let summary = await stopped.value
             feed?.finish()
             await feeder?.value
-            let text = Cleanup.removeFillers(await session.finish())
+            let raw = await session.finish()
+            let text = Cleanup.removeFillers(raw)
             let before = await cursor?.value ?? nil
             guard !Task.isCancelled else { return }
+            defer { if !text.isEmpty { record(raw: raw, text: text, spoken: spoken, keyUp: keyUp) } }
             guard self.generation == generation else {
                 // A newer dictation is listening: land this one, and leave the HUD to the new one.
                 if !text.isEmpty {
@@ -221,6 +228,13 @@ final class Dictation {
         }
         phase = .idle
         announce("Inserted")
+    }
+
+    /// Counts a dictation once its text is handed to the app, or kept for the user when it can't be.
+    private func record(raw: String, text: String, spoken: Duration, keyUp: ContinuousClock.Instant) {
+        stats.record(raw: raw, text: text, yourWords: Prefs.words, seconds: spoken / .seconds(1),
+                     latency: Int(keyUp.duration(to: .now) / .milliseconds(1)), app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+        stats.save()
     }
 
     /// Pastes the last dictation again, from the menu.
