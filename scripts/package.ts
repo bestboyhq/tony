@@ -1,5 +1,5 @@
-// `node scripts/package.ts`: builds Tony.app, signed with the Developer ID (ad hoc without one) and the
-// hardened runtime, into release/. Options:
+// `node scripts/package.ts`: builds Tony.app, signed with the Developer ID and the hardened runtime (ad hoc
+// without one), into release/. Options:
 //   --version 1.2.3      written into CFBundleShortVersionString and CFBundleVersion (Sparkle compares the latter)
 //   --debug              a debug build, for development
 //   --dmg                also the DMG users download, notarized and stapled when APPLE_KEYCHAIN_PROFILE names
@@ -65,8 +65,9 @@ if (o.feed?.startsWith('http://')) run('plutil', ['-insert', 'NSAppTransportSecu
 
 // Signed inside out: Sparkle's helpers, Sparkle, then the app with its entitlements.
 const identity = process.env.TONY_SIGN_IDENTITY ?? (sh('security', ['find-identity', '-v', '-p', 'codesigning']).includes('Developer ID Application') ? 'Developer ID Application' : '-')
+// Ad hoc without the hardened runtime: its library validation refuses to load an ad hoc Sparkle, which has no Team ID.
 const sign = (path: string, ...extra: string[]) =>
-  run('codesign', ['--force', '--sign', identity, '--options', 'runtime', ...(identity === '-' ? [] : ['--timestamp']), ...extra, path])
+  run('codesign', ['--force', '--sign', identity, ...(identity === '-' ? [] : ['--options', 'runtime', '--timestamp']), ...extra, path])
 const sparkle = join(contents, 'Frameworks/Sparkle.framework/Versions/B')
 sign(join(sparkle, 'XPCServices/Installer.xpc'))
 sign(join(sparkle, 'XPCServices/Downloader.xpc'), '--preserve-metadata=entitlements')

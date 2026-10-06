@@ -1,7 +1,7 @@
 // `node scripts/update-e2e.ts`: in-app updates end to end, the way a user gets them. A signed build of
 // 0.0.1 finds 0.0.2 on a local feed, downloads it, and "Restart to Update" (clicked in the menu bar
-// menu) relaunches it as 0.0.2. CI runs it before every release.
-// Needs Accessibility for the terminal (it clicks the menu). It builds under its own name, app id, and
+// panel) relaunches it as 0.0.2. CI runs it before every release.
+// Needs Accessibility for the terminal (it clicks the panel). It builds under its own name, app id, and
 // a throwaway EdDSA key, so an installed Tony, its settings, and the real signing key stay untouched.
 import { execFileSync, spawn } from 'node:child_process'
 import { generateKeyPairSync } from 'node:crypto'
@@ -18,18 +18,15 @@ const app = join(dir, 'Applications', `${NAME}.app`) // in an Applications folde
 const sh = (cmd: string, args: string[]) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 const run = (cmd: string, args: string[]) => execFileSync(cmd, args, { stdio: 'inherit' })
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const bar = `menu bar item 1 of menu bar 2 of process "${NAME}"`
-const menu = () => {
-  // Opening the status item's menu builds it fresh; Escape closes it again.
-  const items = sh('osascript', ['-e', `tell application "System Events"
-    click ${bar}
-    delay 0.3
-    set names to name of menu items of menu 1 of ${bar}
-    key code 53
-    return names
-  end tell`])
-  return items
-}
+// Opens the menu bar panel and returns its buttons' accessibility labels, then clicks the one labeled
+// `press`, or closes the panel again.
+const panel = (press?: string) => sh('osascript', ['-l', 'JavaScript', '-e', `
+  const p = Application('System Events').processes['${NAME}'], icon = p.menuBars[1].menuBarItems[0]
+  const open = () => p.windows().find((w) => w.subrole() === 'AXSystemDialog')
+  if (!open()) { icon.click(); delay(0.3) }
+  const buttons = open().entireContents().filter((e) => ['AXButton', 'AXMenuButton'].includes(e.role()))
+  ${press ? `buttons.find((b) => b.description() === '${press}').click()` : 'icon.click()'}
+  buttons.map((b) => b.description()).join(', ')`])
 const executable = `${app}/Contents/MacOS/${NAME}`
 const quit = (signal: string) => spawn('pkill', [signal, '-f', executable])
 function running() {
@@ -45,7 +42,7 @@ async function until(what: string, test: () => boolean, ms = 180_000) {
   for (const end = Date.now() + ms; Date.now() < end; await sleep(1000)) {
     try {
       if (test()) return
-    } catch {} // not there yet: no process, no menu
+    } catch {} // not there yet: no process, no panel
   }
   throw new Error(`timed out waiting for ${what}`)
 }
@@ -93,15 +90,10 @@ try {
   sh('defaults', ['write', ID, 'onboarded', '-bool', 'true']) // no onboarding window in the way
   spawn('open', ['-g', app], { stdio: 'ignore', detached: true }).unref()
   await until('0.0.1 to start', running)
-  await until('Restart to Update in the menu', () => menu().includes('Restart to Update'))
-  console.log(`menu: ${menu()}`)
-  sh('osascript', ['-e', `tell application "System Events"
-    click ${bar}
-    delay 0.3
-    click menu item "Restart to Update" of menu 1 of ${bar}
-  end tell`])
+  await until('Restart to Update in the panel', () => panel().includes('Restart to Update'))
+  console.log(`panel: ${panel('Restart to Update')}`)
   await until('0.0.2 to be installed', () => version() === '0.0.2')
-  await until('0.0.2 to relaunch', () => running() && menu().includes('Check for Updates…'))
+  await until('0.0.2 to relaunch', () => running() && panel().includes('Settings'))
   console.log(`ok: 0.0.1 updated itself to ${version()} and relaunched`)
 } finally {
   feed.close()
