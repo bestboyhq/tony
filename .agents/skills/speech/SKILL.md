@@ -7,7 +7,7 @@ description: On-device speech to text. Use when changing the model, its download
 
 Speech to text on the Neural Engine.
 
-- NVIDIA Parakeet TDT v3 through FluidAudio (Core ML).
+- NVIDIA Parakeet TDT v3 post-trained by Moondream ("Ultra", `AsrModelVersion.ultra`) through FluidAudio (Core ML): v3's languages and speed, fewer errors in every language FluidAudio measures.
   It detects 25 European languages by itself, writes punctuation and capitals, and keeps filler words.
   Other languages need a fallback model.
 - The model downloads on first run while onboarding asks for permissions: in the background, resumable, verified, with real progress.
