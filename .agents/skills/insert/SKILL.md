@@ -20,6 +20,6 @@ Putting the text where the cursor is.
 - Where the app exposes it through Accessibility, read the text before the cursor to fix spacing and capitals: no capital mid-sentence, a space after a word, none after an opening bracket or at a line start.
   Apps that expose nothing get the text as transcribed.
 - One ⌘Z undoes a whole dictation.
-- The menu offers the last dictation to copy or paste again, kept in memory only.
+- The menu bar panel offers the last dictation to copy or paste again, kept in memory only.
 
 Done when dictation lands right in TextEdit, Safari, Chrome, Slack, VS Code, and Terminal, a password field refuses it gracefully, QWERTY, Dvorak, and Russian layouts all work, and the clipboard is unchanged afterwards.

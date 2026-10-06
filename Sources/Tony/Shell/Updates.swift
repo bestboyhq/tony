@@ -21,6 +21,8 @@ final class Updates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate
     }
 
     func start() {
+        // A development build (0.0.0) would replace itself with the latest release.
+        guard Bundle.main.version != "0.0.0" else { return }
         controller.startUpdater()
         checkInBackground()
     }
