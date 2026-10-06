@@ -18,6 +18,10 @@ Speech to text on the Neural Engine.
   Speech models invent text ("Thank you.") from silence and noise.
 - Long dictation transcribes in the background while the user still speaks, in overlapping chunks stitched at a pause, so key up stays fast after five minutes of talk.
   Grip learned this: Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+- Parakeet hears one language per clip, and reports none.
+  When the user switches language mid-dictation, it garbles one language or drops it ("Can you send me the report, do końca dnia" came out Polish only).
+  Where part of a clip comes out unsure or wordless, each run is transcribed on its own (`Segments.languages`), and kept only if Parakeet is sure of it.
+  Check changes with mixed clips: `say -v Samantha` for English and `say -v Zosia` for Polish, joined with ffmpeg.
 - Filler words (um, uh, and each language's equivalents) come out by default.
 - The user's words (names, brands, jargon) get their spelling where Parakeet mishears them.
   Parakeet can't bias its decoding, so a second model, Parakeet CTC 110M (~100 MB, downloaded once there are words), hears the same audio alongside it, and a word replaces Parakeet's text only where it is spelled alike and the audio fits it better.
