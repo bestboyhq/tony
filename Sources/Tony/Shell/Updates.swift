@@ -4,10 +4,10 @@ import Sparkle
 
 /// In-app updates with Sparkle 2 from GitHub Releases. Checks at launch, every 4 hours (Info.plist),
 /// and on wake, since the timer stops while the Mac sleeps. Downloads in the background and installs on
-/// quit; nobody quits a menu bar app, so the menu offers Restart to Update.
+/// quit; nobody quits a menu bar app, so the menu bar panel offers Restart to Update.
 @Observable
 final class Updates: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
-    /// An update is downloaded and waits: the menu shows Restart to Update.
+    /// An update is downloaded and waits: the menu bar panel shows Restart to Update.
     private(set) var ready = false
     /// A dictation is running: installs wait until Tony is idle.
     @ObservationIgnored var isBusy: () -> Bool = { false }

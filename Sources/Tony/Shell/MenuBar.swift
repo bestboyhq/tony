@@ -147,6 +147,7 @@ private struct Home: View {
                 }
                 .help("Settings")
                 .keyboardShortcut(",")
+                .accessibilityLabel("Settings")
                 Menu {
                     Button("About Tony") {
                         menuBar.close()
@@ -170,7 +171,9 @@ private struct Home: View {
                     Image(systemName: "arrow.down.circle.fill").foregroundStyle(.tint)
                     Text("A new version of Tony is ready.")
                     Spacer(minLength: 0)
-                    Button("Restart") { app.updates.restartToUpdate() }.controlSize(.small)
+                    Button("Restart") { app.updates.restartToUpdate() }
+                        .controlSize(.small)
+                        .accessibilityLabel("Restart to Update")
                 }
                 .padding(10)
                 .card()
@@ -217,11 +220,11 @@ private struct Home: View {
         if Permissions.moved {
             problem("Relaunch Tony to use the microphone.", fix: Permissions.home == nil ? nil : "Relaunch") { Permissions.relaunch() }
         } else if permissions.microphone != .authorized {
-            problem("Tony needs the microphone.", fix: "Allow", onboarding)
+            problem("Tony needs the microphone.", fix: permissions.microphone == .notDetermined ? "Allow" : "Open Settings") { permissions.requestMicrophone() }
         } else if permissions.needsRelaunch {
             problem("Relaunch Tony to finish setup.", fix: "Relaunch") { Permissions.relaunch() }
         } else if !permissions.accessibility {
-            problem("Tony needs Accessibility access.", fix: "Allow", onboarding)
+            problem("Tony needs Accessibility access.", fix: "Allow") { permissions.requestAccessibility() }
         } else {
             switch app.speech.state {
             case let .downloading(progress):
@@ -254,11 +257,6 @@ private struct Home: View {
                 }
             }
         }
-    }
-
-    private func onboarding() {
-        menuBar.close()
-        app.showOnboarding()
     }
 
     private func problem(_ message: String, fix: String? = nil, _ action: @escaping () -> Void = {}) -> some View {
