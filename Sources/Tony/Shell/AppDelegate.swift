@@ -115,6 +115,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return .terminateLater
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        dictation.ducking.restoreNow()
+    }
+
     /// Shown while a window is open. Text fields need Edit's key equivalents: ⌘V, Tony's own paste
     /// included, goes nowhere without a Paste item.
     private static func mainMenu() -> NSMenu {

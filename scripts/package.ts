@@ -66,8 +66,9 @@ if (o.feed?.startsWith('http://')) run('plutil', ['-insert', 'NSAppTransportSecu
 // Signed inside out: Sparkle's helpers, Sparkle, then the app with its entitlements.
 const identity = process.env.TONY_SIGN_IDENTITY ?? (sh('security', ['find-identity', '-v', '-p', 'codesigning']).includes('Developer ID Application') ? 'Developer ID Application' : '-')
 // Ad hoc without the hardened runtime: its library validation refuses to load an ad hoc Sparkle, which has no Team ID.
+// Debug builds skip the secure timestamp: only notarization needs it, and Apple's timestamp server often fails.
 const sign = (path: string, ...extra: string[]) =>
-  run('codesign', ['--force', '--sign', identity, ...(identity === '-' ? [] : ['--options', 'runtime', '--timestamp']), ...extra, path])
+  run('codesign', ['--force', '--sign', identity, ...(identity === '-' ? [] : ['--options', 'runtime', ...(o.debug ? [] : ['--timestamp'])]), ...extra, path])
 const sparkle = join(contents, 'Frameworks/Sparkle.framework/Versions/B')
 sign(join(sparkle, 'XPCServices/Installer.xpc'))
 sign(join(sparkle, 'XPCServices/Downloader.xpc'), '--preserve-metadata=entitlements')
