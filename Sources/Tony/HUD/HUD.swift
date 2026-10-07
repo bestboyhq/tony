@@ -25,6 +25,10 @@ final class HUD {
         let host = NSHostingView(rootView: HUDView(dictation: dictation, mic: mic))
         host.sizingOptions = []
         panel.contentView = host
+        // Never ordered out, only cleared: once a full-screen Space closes, macOS pins a hidden panel to the
+        // Space it returns to, and the pill never shows on the others again.
+        panel.alphaValue = 0
+        panel.orderFrontRegardless()
         dictation.onPhase = { [weak self] phase in self?.update(phase) }
     }
 
@@ -35,17 +39,18 @@ final class HUD {
             hide = Task {
                 try? await Task.sleep(for: .milliseconds(400))
                 guard !Task.isCancelled else { return }
-                panel.orderOut(nil)
+                panel.alphaValue = 0
             }
             panel.ignoresMouseEvents = true
             return
         }
         if case let .notice(notice) = phase { panel.ignoresMouseEvents = notice.action == nil } else { panel.ignoresMouseEvents = true }
-        if !panel.isVisible {
+        if panel.alphaValue == 0 {
             // Bottom center of the display with the focused window, above the Dock.
             let screen = NSScreen.main ?? NSScreen.screens[0]
             let frame = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: (frame.midX - Self.size.width / 2).rounded(), y: frame.minY + 4))
+            panel.alphaValue = 1
             panel.orderFrontRegardless()
         }
     }

@@ -10,6 +10,7 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
 
 - An `NSPanel` with `.nonactivatingPanel`, so focus stays in the user's app, where the paste must land.
   It floats above full-screen apps and shows on every Space.
+  Between dictations it stays ordered in at alpha 0: once a full-screen Space closes, macOS pins a hidden panel to one Space for good.
 - It appears in the frame the key goes down and leaves when the text lands.
   Create the panel at launch, so showing it costs one frame.
 - States: listening with the live mic level, transcribing (only when it takes long enough to notice), done, and errors.
