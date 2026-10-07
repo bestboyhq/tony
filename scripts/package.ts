@@ -7,7 +7,8 @@
 //   --update             also the update zip, and appcast.xml signed with the EdDSA key in SPARKLE_PRIVATE_KEY
 //                        (or --ed-key-file)
 //   --name, --id, --feed, --public-key, --download-url, --out: a test build under its own identity
-//                        (scripts/update-e2e.ts), so the installed Tony stays untouched
+//                        (scripts/update-e2e.ts), so the installed Tony stays untouched. Its --out must be in a
+//                        .noindex folder, so Spotlight and Open With never list it next to Tony
 import { execFileSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -30,6 +31,7 @@ const { values: o } = parseArgs({
     out: { type: 'string', default: join(root, 'release') },
   },
 })
+if (o.name !== 'Tony' && !/\.noindex(\/|$)/.test(resolve(o.out))) throw new Error(`--out ${o.out}: put a test build in a .noindex folder, so Spotlight never lists it`)
 const sh = (cmd: string, args: string[]) => execFileSync(cmd, args, { encoding: 'utf8', cwd: root, stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 const run = (cmd: string, args: string[]) => execFileSync(cmd, args, { cwd: root, stdio: 'inherit' })
 
