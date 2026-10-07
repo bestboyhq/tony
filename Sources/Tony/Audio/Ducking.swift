@@ -57,14 +57,17 @@ nonisolated final class Ducking: @unchecked Sendable {
         timer == nil && (device.flatMap(Devices.volume) ?? 0) > 0.01
     }
 
+    /// Follows the clock, not the tick count, so late ticks on a busy Mac don't stretch the fade.
     private func fade(to target: Float32, over seconds: Double) {
         timer?.cancel()
-        let step = original * Float32(Self.tick / seconds)
+        let from = level, start = DispatchTime.now().uptimeNanoseconds
+        let duration = seconds * Double(abs(target - from) / original)  // part of the volume, part of the time
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now(), repeating: Self.tick)
         timer.setEventHandler { [weak self] in
             guard let self, let device else { return }
-            level = level < target ? min(level + step, target) : max(level - step, target)
+            let done = duration > 0 ? Double(DispatchTime.now().uptimeNanoseconds - start) / 1e9 / duration : 1
+            level = done >= 1 ? target : from + (target - from) * Float32(done)
             guard Devices.setVolume(device, level) else { return forget() }  // the device went away
             guard level == target else { return }
             self.timer?.cancel()

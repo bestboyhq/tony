@@ -190,29 +190,31 @@ import Testing
         let volume = try #require(Devices.volume(id))
         defer { Devices.setVolume(id, volume) }
         let ducking = Ducking()
-        func settle(_ seconds: Double) async throws { try await Task.sleep(for: .seconds(seconds + 0.2)) }
+        /// Waits for the volume to get there, as long as a loaded CI machine needs.
+        func reaches(_ expected: Float32?, sourceLocation: SourceLocation = #_sourceLocation) async throws {
+            let deadline = ContinuousClock.now + .seconds(5)
+            while Devices.volume(id) != expected, .now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+            #expect(Devices.volume(id) == expected, sourceLocation: sourceLocation)
+        }
 
         ducking.duck()
-        try await settle(Ducking.fadeOut)
-        #expect(Devices.volume(id) == 0)
+        try await reaches(0)
         ducking.restore()
-        try await settle(Ducking.fadeIn)
-        #expect(Devices.volume(id) == volume)
+        try await reaches(volume)
 
         // Turned up while Tony listened: the user's volume stays.
         ducking.duck()
-        try await settle(Ducking.fadeOut)
+        try await reaches(0)
         Devices.setVolume(id, volume / 2)
         let turnedUp = Devices.volume(id)
         ducking.restore()
-        try await settle(Ducking.fadeIn)
+        try await Task.sleep(for: .seconds(Ducking.fadeIn + 0.2))
         #expect(Devices.volume(id) == turnedUp)
 
         // Tony quit while faded out: the next launch brings the sound back.
         ducking.duck()
-        try await settle(Ducking.fadeOut)
+        try await reaches(0)
         _ = Ducking()
-        try await settle(0)
-        #expect(Devices.volume(id) == turnedUp)
+        try await reaches(turnedUp)
     }
 }
