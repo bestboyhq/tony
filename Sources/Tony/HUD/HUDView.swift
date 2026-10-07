@@ -15,7 +15,7 @@ struct HUDView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, 14)
+        .padding(.bottom, 26)  // the pill 18 pt above the Dock, and room for its shadow
         .animation(animation, value: dictation.phase)
     }
 
