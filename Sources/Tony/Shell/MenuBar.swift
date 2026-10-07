@@ -49,17 +49,12 @@ final class MenuBar: NSObject, NSWindowDelegate {
         // Non-activating from the start: set later, the window server still activates Tony on a click.
         panel = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.contentViewController = NSHostingController(rootView: MenuBarView(app: app, menuBar: self))
-        // Clipped to its shape: the glass draws a faint shadow past its corners, which the window's shadow
-        // would outline as a dark rectangle.
-        panel.contentView?.wantsLayer = true
-        panel.contentView?.layer?.cornerRadius = PanelBackground.radius
-        panel.contentView?.layer?.cornerCurve = .continuous
-        panel.contentView?.layer?.masksToBounds = true
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        // The shadow is SwiftUI's, in a clear margin around the glass: the window's own outlines it in a dark line.
+        panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.animationBehavior = .utilityWindow
@@ -128,10 +123,10 @@ final class MenuBar: NSObject, NSWindowDelegate {
         let screen = (item.button?.window?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.layoutIfNeeded()
         let size = panel.frame.size
-        let x = min(max(icon.midX - size.width / 2, screen.minX + 8), screen.maxX - size.width - 8)
-        panel.setFrameTopLeftPoint(NSPoint(x: x.rounded(), y: icon.minY - 6))
+        let margin = PanelBackground.margin
+        let x = min(max(icon.midX - size.width / 2, screen.minX + 8 - margin), screen.maxX - size.width - 8 + margin)
+        panel.setFrameTopLeftPoint(NSPoint(x: x.rounded(), y: icon.minY - 6 + margin))
         panel.makeKeyAndOrderFront(nil)
-        panel.invalidateShadow()  // its shape is the content's, drawn by now
         item.button?.highlight(true)
         monitors = [
             NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
@@ -178,7 +173,6 @@ final class MenuBar: NSObject, NSWindowDelegate {
             var frame = frame
             if isVisible { frame.origin.y = self.frame.maxY - frame.height }
             super.setFrame(frame, display: display)
-            invalidateShadow()
         }
     }
 }
@@ -378,10 +372,13 @@ private struct Subpage<Content: View>: View {
     }
 }
 
-/// Liquid Glass where the system has it, vibrancy before that, outlined with Increase Contrast.
+/// Liquid Glass where the system has it, vibrancy before that, outlined with Increase Contrast, with a soft
+/// shadow in a clear margin. Clicks on the margin and the shadow go through to the app under them. Clipped to its
+/// shape: Liquid Glass draws its own shadow just past its edge, which reads as a dark outline.
 private struct PanelBackground: ViewModifier {
     @Environment(\.colorSchemeContrast) private var contrast
     static let radius: CGFloat = 16
+    static let margin: CGFloat = 32
     private let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
 
     func body(content: Content) -> some View {
@@ -393,6 +390,9 @@ private struct PanelBackground: ViewModifier {
             }
         }
         .overlay(shape.strokeBorder(.primary.opacity(contrast == .increased ? 0.5 : 0.1), lineWidth: contrast == .increased ? 1 : 0.5))
+        .clipShape(shape)
+        .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+        .padding(Self.margin)
     }
 }
 
