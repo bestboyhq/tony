@@ -3,32 +3,54 @@ import Carbon.HIToolbox
 import Observation
 import SwiftUI
 
-/// The menu bar icon and its panel: what Tony is doing, the last dictation, stats, and settings.
+/// The menu bar icon and its panel: what Tony is doing, the last dictation, stats, settings, and About.
 /// The panel is non-activating, like the HUD: it takes the keyboard for its fields, but the user's app stays
-/// active, so focus goes straight back to it, and a pasted dictation lands there.
+/// active, so focus goes straight back to it, and a pasted dictation lands there. A right click opens a menu instead.
 @Observable
 final class MenuBar: NSObject, NSWindowDelegate {
-    enum Page { case home, settings }
+    enum Page { case home, settings, about }
 
     var page = Page.home
     @ObservationIgnored private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     @ObservationIgnored private var panel: Panel!
-    @ObservationIgnored private let permissions: Permissions
+    @ObservationIgnored private let app: AppDelegate
+    /// On the icon while an update is available.
+    @ObservationIgnored private let dot = NSView()
+    @ObservationIgnored private var listening = false
     /// Clicks in other apps and Esc close the panel.
     @ObservationIgnored private var monitors: [Any] = []
 
     init(app: AppDelegate) {
-        permissions = app.permissions
+        self.app = app
         super.init()
         item.button?.image = Mark.menuBarImage(listening: false)
-        item.button?.setAccessibilityLabel("Tony")
         item.button?.target = self
-        item.button?.action = #selector(toggle)
+        item.button?.action = #selector(click)
         // On mouse down, like a menu.
         item.button?.sendAction(on: [.leftMouseDown, .rightMouseDown])
+        if let button = item.button {
+            // Over the mark's empty top right corner, in color, since a template image is one.
+            dot.wantsLayer = true
+            dot.layer?.cornerRadius = 3
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            button.addSubview(dot)
+            NSLayoutConstraint.activate([
+                dot.widthAnchor.constraint(equalToConstant: 6),
+                dot.heightAnchor.constraint(equalToConstant: 6),
+                dot.centerXAnchor.constraint(equalTo: button.centerXAnchor, constant: 6.5),
+                dot.centerYAnchor.constraint(equalTo: button.centerYAnchor, constant: -6.5),
+            ])
+        }
+        showUpdate()
         // Non-activating from the start: set later, the window server still activates Tony on a click.
         panel = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.contentViewController = NSHostingController(rootView: MenuBarView(app: app, menuBar: self))
+        // Clipped to its shape: the glass draws a faint shadow past its corners, which the window's shadow
+        // would outline as a dark rectangle.
+        panel.contentView?.wantsLayer = true
+        panel.contentView?.layer?.cornerRadius = PanelBackground.radius
+        panel.contentView?.layer?.cornerCurve = .continuous
+        panel.contentView?.layer?.masksToBounds = true
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.backgroundColor = .clear
@@ -41,19 +63,63 @@ final class MenuBar: NSObject, NSWindowDelegate {
     }
 
     func setListening(_ listening: Bool) {
+        self.listening = listening
         item.button?.image = Mark.menuBarImage(listening: listening)
+        showUpdate()
         // The panel holds the keyboard: a dictation lands in its field, or, from Home, back in the user's app.
         if listening, page == .home { close() }
     }
 
-    @objc private func toggle() {
-        if panel.isVisible { close() } else { show(.home) }
+    /// The dot on the icon, for as long as an update is available, and again when that changes.
+    private func showUpdate() {
+        withObservationTracking {
+            let available = app.updates.available != nil
+            // The listening icon fills the corner.
+            dot.isHidden = !available || listening
+            dot.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+            item.button?.setAccessibilityLabel(available ? "Tony, update available" : "Tony")
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.showUpdate() }
+        }
     }
+
+    @objc private func click() {
+        guard let event = NSApp.currentEvent, event.type == .rightMouseDown || event.modifierFlags.contains(.control) else {
+            return panel.isVisible ? close() : show(.home)
+        }
+        close()
+        // A status item with a menu opens it on a click, and sends no action.
+        item.menu = menu()
+        item.button?.performClick(nil)
+        item.menu = nil
+    }
+
+    private func menu() -> NSMenu {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "About Tony", action: #selector(showAbout), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",").target = self
+        let updates = app.updates
+        if let version = updates.available {
+            // No action while installing: disabled.
+            let restart = menu.addItem(withTitle: updates.installing ? "Updating…" : "Restart to Update", action: updates.installing ? nil : #selector(Updates.restartToUpdate), keyEquivalent: "")
+            restart.target = updates
+            restart.badge = NSMenuItemBadge(string: version)
+        } else {
+            menu.addItem(withTitle: "Check for Updates…", action: #selector(Updates.check), keyEquivalent: "").target = updates
+        }
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Quit Tony", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        return menu
+    }
+
+    @objc private func showAbout() { show(.about) }
+    @objc private func showSettings() { show(.settings) }
 
     func show(_ page: Page) {
         self.page = page
         guard !panel.isVisible, let icon else { return }
-        permissions.refresh()
+        app.permissions.refresh()
         // Under the icon, clear of the screen's edges.
         let screen = (item.button?.window?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.layoutIfNeeded()
@@ -122,7 +188,12 @@ private struct MenuBarView: View {
         Group {
             switch menuBar.page {
             case .home: Home(app: app, menuBar: menuBar)
-            case .settings: SettingsPage(app: app, menuBar: menuBar)
+            case .settings:
+                Subpage(title: "Settings", menuBar: menuBar) {
+                    SettingsView(dictation: app.dictation, speech: app.speech, updates: app.updates)
+                }
+            case .about:
+                Subpage(menuBar: menuBar) { AboutView() }
             }
         }
         .frame(width: 391)  // the activity grid's 26 weeks, edge to edge
@@ -150,10 +221,7 @@ private struct Home: View {
                 .accessibilityLabel("Settings")
                 .accessibilityIdentifier("settings")
                 Menu {
-                    Button("About Tony") {
-                        menuBar.close()
-                        app.showAbout()
-                    }
+                    Button("About Tony") { menuBar.page = .about }
                     Divider()
                     Button("Quit Tony") { NSApp.terminate(nil) }.keyboardShortcut("q")
                 } label: {
@@ -167,18 +235,27 @@ private struct Home: View {
             .buttonStyle(.borderless)
             .font(.system(size: 13))
 
-            if app.updates.ready {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.down.circle.fill").foregroundStyle(.tint)
-                    Text("A new version of Tony is ready.")
+            if let version = app.updates.available {
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.white, .tint)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Tony \(version) is available").fontWeight(.semibold)
+                        Text("Restarting takes a few seconds.").font(.callout).foregroundStyle(.secondary)
+                    }
                     Spacer(minLength: 0)
-                    Button("Restart") { app.updates.restartToUpdate() }
-                        .controlSize(.small)
-                        .accessibilityLabel("Restart to Update")
-                        .accessibilityIdentifier("restart-to-update")
+                    if app.updates.installing {
+                        ProgressView().controlSize(.small).accessibilityLabel("Updating")
+                    } else {
+                        Button("Restart") { app.updates.restartToUpdate() }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityLabel("Restart to Update")
+                            .accessibilityIdentifier("restart-to-update")
+                    }
                 }
-                .padding(10)
-                .card()
+                .padding(12)
+                .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
             if let last = app.dictation.lastText {
@@ -270,14 +347,16 @@ private struct Home: View {
     }
 }
 
-private struct SettingsPage: View {
-    let app: AppDelegate
+/// A page under Home: its title, and Back.
+private struct Subpage<Content: View>: View {
+    var title: String?
     let menuBar: MenuBar
+    @ViewBuilder let content: Content
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                Text("Settings").font(.headline)
+                if let title { Text(title).font(.headline) }
                 HStack {
                     Button { menuBar.page = .home } label: {
                         Image(systemName: "chevron.left").frame(width: 24, height: 24).contentShape(Rectangle())
@@ -291,7 +370,7 @@ private struct SettingsPage: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
-            SettingsView(dictation: app.dictation, speech: app.speech, updates: app.updates)
+            content
         }
     }
 }
@@ -299,7 +378,8 @@ private struct SettingsPage: View {
 /// Liquid Glass where the system has it, vibrancy before that, outlined with Increase Contrast.
 private struct PanelBackground: ViewModifier {
     @Environment(\.colorSchemeContrast) private var contrast
-    private let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+    static let radius: CGFloat = 16
+    private let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
 
     func body(content: Content) -> some View {
         Group {

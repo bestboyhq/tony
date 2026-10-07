@@ -162,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc func showAbout() {
-        show("about", title: "About Tony") { AboutView() }
+        menuBar.show(.about)
     }
 
     /// The dock icon shows only while a window is open.
