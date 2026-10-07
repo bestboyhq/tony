@@ -19,6 +19,9 @@ final class MenuBar: NSObject, NSWindowDelegate {
     @ObservationIgnored private var listening = false
     /// Clicks in other apps and Esc close the panel.
     @ObservationIgnored private var monitors: [Any] = []
+    /// A click on the icon reaches Tony first as a click in another app (the menu bar draws it), then takes the
+    /// keyboard from the panel, and only then calls `click`: it is `click`'s to close the panel, or it opens again.
+    @ObservationIgnored private var clickedIcon = false
 
     init(app: AppDelegate) {
         self.app = app
@@ -26,8 +29,9 @@ final class MenuBar: NSObject, NSWindowDelegate {
         item.button?.image = Mark.menuBarImage(listening: false)
         item.button?.target = self
         item.button?.action = #selector(click)
-        // On mouse down, like a menu.
-        item.button?.sendAction(on: [.leftMouseDown, .rightMouseDown])
+        // On mouse up: a menu opened on mouse down takes the mouse up from the button, which then spends the
+        // next click on the icon finishing its own.
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         if let button = item.button {
             // Over the mark's empty top right corner, in color, since a template image is one.
             dot.wantsLayer = true
@@ -84,7 +88,7 @@ final class MenuBar: NSObject, NSWindowDelegate {
     }
 
     @objc private func click() {
-        guard let event = NSApp.currentEvent, event.type == .rightMouseDown || event.modifierFlags.contains(.control) else {
+        guard let event = NSApp.currentEvent, event.type == .rightMouseUp || event.modifierFlags.contains(.control) else {
             return panel.isVisible ? close() : show(.home)
         }
         close()
@@ -130,8 +134,12 @@ final class MenuBar: NSObject, NSWindowDelegate {
         panel.invalidateShadow()  // its shape is the content's, drawn by now
         item.button?.highlight(true)
         monitors = [
-            NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
-                if self?.clickingIcon == false { self?.close() }
+            NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+                guard let self else { return }
+                // Where it went down, in screen coordinates since it has no window, not whether the button is still
+                // down: a tap is up by now.
+                clickedIcon = icon.contains(event.locationInWindow)
+                if !clickedIcon { close() }
             },
             // Before a text field, which takes Esc for completions.
             NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -148,14 +156,9 @@ final class MenuBar: NSObject, NSWindowDelegate {
         return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
-    /// A click on the icon reaches Tony as a click in another app (the menu bar draws it), and takes the keyboard
-    /// from the panel, before `toggle`: it is `toggle`'s to close the panel, or it opens again.
-    private var clickingIcon: Bool {
-        NSEvent.pressedMouseButtons != 0 && icon?.contains(NSEvent.mouseLocation) == true
-    }
-
     func close() {
         guard panel.isVisible else { return }
+        clickedIcon = false
         panel.orderOut(nil)
         item.button?.highlight(false)
         monitors.forEach(NSEvent.removeMonitor)
@@ -164,7 +167,7 @@ final class MenuBar: NSObject, NSWindowDelegate {
 
     /// Another app or window took the keyboard.
     func windowDidResignKey(_ notification: Notification) {
-        if !clickingIcon { close() }
+        if !clickedIcon { close() }
     }
 
     private final class Panel: NSPanel {
