@@ -13,6 +13,8 @@ The native macOS app around everything else.
   Like the HUD it is non-activating, so the user's app stays active: its fields still type, the first click in it works, and focus is back in the user's app the moment it closes.
   A click elsewhere or Esc closes it; Esc goes through a key monitor, since a focused text field takes it first.
   A click on the icon also arrives as a click in another app, since the menu bar draws it, and takes the keyboard from the panel: both close paths skip it, or the click closes the panel and opens it again.
+  Tell that click by where it went down, not by a held button: a tap is up before Tony sees it.
+  The icon acts on mouse up: a menu opened on mouse down takes the mouse up from the icon's button, which then spends the next click on the icon finishing its own.
   A `nonactivatingPanel` style set after creation still activates Tony on a click: create the panel with it.
   Clip the panel's content to its rounded shape: Liquid Glass draws a faint shadow past its corners, which the window's shadow outlines as a dark rectangle.
 - Stats are counts by day (words, time spoken, key up to text, fillers, the user's words, words per app) in `Application Support/Tony/stats.json`, never the text.
