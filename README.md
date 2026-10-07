@@ -22,10 +22,7 @@
 </p>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/pill-dark.webp">
-    <img src=".github/assets/pill-light.webp" width="600" alt="Tony's pill pops in, its dot glows and its bars follow a voice, a soft wave runs while it transcribes, and it pops out again">
-  </picture>
+  <img src=".github/assets/pill.webp" width="600" alt="Tony's pill listening: its dot glows and its bars follow a voice, a soft wave runs while it transcribes, and it pops out and back in">
 </p>
 
 <p align="center">
@@ -100,14 +97,8 @@ The pill is most of what you will ever see of Tony, so it gets the attention.
 Click Tony in the menu bar for a glass panel with everything Tony did for you, your last dictation, and Settings.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/home-dark.webp">
-    <img src=".github/assets/home-light.webp" width="400" alt="The menu bar panel: the last dictation with Copy and Paste, 65,292 words dictated, 20 hours saved over typing, 152 words a minute, 100 ms from key up to text, a 25-day streak, six months of activity, and the apps you dictate into">
-  </picture>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/settings-dark.webp">
-    <img src=".github/assets/settings-light.webp" width="400" alt="Settings in the panel: the key, the microphone, the language, your words as tags, and Open at login">
-  </picture>
+  <img src=".github/assets/home.webp" width="400" alt="The menu bar panel: the last dictation with Copy and Paste, 65,292 words dictated, 20 hours saved over typing, 152 words a minute, 100 ms from key up to text, a 25-day streak, six months of activity, and the apps you dictate into">
+  <img src=".github/assets/settings.webp" width="400" alt="Settings in the panel: the key, the microphone, the language, your words as tags, and Open at login">
 </p>
 
 - **Words dictated, and the time they saved you:** typing them at 40 words a minute, an average speed, minus the time you spent saying them.
@@ -132,10 +123,7 @@ Never what you said.
 - **Every word survives.** A password field or an app that refuses paste gets a Copy button in the pill, and your last dictation waits in the panel to paste again.
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/notice-dark.webp">
-    <img src=".github/assets/notice-light.webp" width="600" alt="The pill says 1Password has secure input on, so Tony can't type there, with a Copy button">
-  </picture>
+  <img src=".github/assets/notice.webp" width="600" alt="The pill says 1Password has secure input on, so Tony can't type there, with a Copy button">
 </p>
 
 - **Undo is one ⌘Z.** A dictation lands as a single paste.
