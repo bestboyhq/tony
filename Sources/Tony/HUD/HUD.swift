@@ -46,10 +46,11 @@ final class HUD {
         }
         if case let .notice(notice) = phase { panel.ignoresMouseEvents = notice.action == nil } else { panel.ignoresMouseEvents = true }
         if panel.alphaValue == 0 {
-            // Bottom center of the display with the focused window, above the Dock.
+            // Bottom center of the display with the focused window, above the Dock. The panel reaches below the
+            // visible frame, so the pill's shadow fades out instead of ending in a line at the panel's edge.
             let screen = NSScreen.main ?? NSScreen.screens[0]
             let frame = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: (frame.midX - Self.size.width / 2).rounded(), y: frame.minY + 4))
+            panel.setFrameOrigin(NSPoint(x: (frame.midX - Self.size.width / 2).rounded(), y: frame.minY - 8))
             panel.alphaValue = 1
             panel.orderFrontRegardless()
         }
