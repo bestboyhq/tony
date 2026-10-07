@@ -14,7 +14,8 @@ The native macOS app around everything else.
   A click elsewhere or Esc closes it; Esc goes through a key monitor, since a focused text field takes it first.
   A click on the icon also arrives as a click in another app, since the menu bar draws it, and takes the keyboard from the panel: both close paths skip it, or the click closes the panel and opens it again.
   A `nonactivatingPanel` style set after creation still activates Tony on a click: create the panel with it.
-  Clip the panel's content to its rounded shape: Liquid Glass draws a faint shadow past its corners, which the window's shadow outlines as a dark rectangle.
+  Clip the glass to its shape: past its edge Liquid Glass draws its own shadow, which reads as a dark outline.
+  The panel's shadow is SwiftUI's, in a clear margin that clicks pass through: a window shadow outlines the panel in a dark line.
 - Stats are counts by day (words, time spoken, key up to text, fillers, the user's words, words per app) in `Application Support/Tony/stats.json`, never the text.
 - Onboarding goes from install to a first dictation in a minute, without docs.
   It asks for Microphone and Accessibility, each just in time with a one-line reason and one system prompt per request.

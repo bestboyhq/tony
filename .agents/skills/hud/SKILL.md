@@ -21,6 +21,7 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
 - The pill never blocks a click meant for the app beneath it: only a notice's action button takes the mouse.
   The voice sets the dot's colors churning and swells it; hover churns them too, read from a global mouse monitor, not from mouse events.
 - Light and dark, vibrancy that matches macOS, and Increase Contrast and Reduce Transparency respected.
+  Clip the glass to its capsule: past its edge Liquid Glass draws its own shadow, which reads as a dark outline.
 - VoiceOver announces listening, done, and errors.
 - Crisp at every scale factor, with a steady layout across states.
 

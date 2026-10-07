@@ -45,7 +45,7 @@ private struct Pill: View {
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 340, alignment: .leading)
+                    .frame(maxWidth: 420, alignment: .leading)  // one line for "Google Chrome has secure input on…"
                 if let action = notice.action {
                     Button(action.title) { dictation.perform(action) }
                         .buttonStyle(.borderedProminent)
@@ -245,7 +245,8 @@ private struct Meter: View {
 }
 
 /// Liquid Glass where the system has it, vibrancy before that; solid with Reduce Transparency, outlined
-/// with Increase Contrast. A soft shadow lifts it off whatever is under it.
+/// with Increase Contrast. A soft shadow lifts it off whatever is under it. Clipped to its shape: Liquid Glass
+/// draws its own shadow just past its edge, which reads as a dark outline.
 private struct Glass: ViewModifier {
     let increasedContrast: Bool
 
@@ -261,6 +262,7 @@ private struct Glass: ViewModifier {
                     .overlay(Capsule().strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0.08), lineWidth: increasedContrast ? 1 : 0.5))
             }
         }
+        .clipShape(.capsule)
         .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
     }
 }

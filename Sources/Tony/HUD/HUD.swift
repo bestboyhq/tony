@@ -7,7 +7,7 @@ final class HUD {
     private let panel: Panel
     private let dictation: Dictation
     private var hide: Task<Void, Never>?
-    static let size = NSSize(width: 520, height: 96)
+    static let size = NSSize(width: 640, height: 96)
 
     init(dictation: Dictation, mic: Mic) {
         self.dictation = dictation
