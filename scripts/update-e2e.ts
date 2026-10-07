@@ -13,7 +13,7 @@ import { join } from 'node:path'
 
 const NAME = 'TonyUpdateTest'
 const ID = 'com.bestboyhq.tony.updatetest'
-const dir = join(import.meta.dirname, '../.context/update-e2e')
+const dir = join(import.meta.dirname, '../.context/update-e2e.noindex') // .noindex: Spotlight never lists the test builds
 const app = join(dir, 'Applications', `${NAME}.app`) // in an Applications folder, so it never offers to move itself
 const sh = (cmd: string, args: string[]) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 const run = (cmd: string, args: string[]) => execFileSync(cmd, args, { stdio: 'inherit' })
@@ -58,10 +58,10 @@ async function cleanup() {
   quit('-TERM')
   await until('the app to quit', () => !running(), 15_000).catch(() => quit('-KILL'))
   await until('the app to be killed', () => !running(), 5000)
-  for (const p of [`Library/Caches/${ID}`, `Library/HTTPStorages/${ID}`, `Library/Preferences/${ID}.plist`]) rmSync(join(homedir(), p), { recursive: true, force: true })
   try {
-    sh('defaults', ['delete', ID])
+    sh('defaults', ['delete', ID]) // before the files: it leaves an empty plist behind
   } catch {} // nothing to delete
+  for (const p of [`Library/Caches/${ID}`, `Library/HTTPStorages/${ID}`, `Library/HTTPStorages/${ID}.binarycookies`, `Library/Preferences/${ID}.plist`]) rmSync(join(homedir(), p), { recursive: true, force: true })
   if (existsSync(app)) execFileSync('/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister', ['-u', app])
   rmSync(join(dir, 'Applications'), { recursive: true, force: true })
 }
@@ -99,7 +99,11 @@ try {
   await until('0.0.1 to start', running)
   await until('Restart to Update in the panel', () => panel().includes('restart-to-update'))
   latest = '0.0.3' // a release ships while the user hasn't restarted yet
-  console.log(`panel: ${panel('restart-to-update')}`)
+  // Retried: the panel the last check closed can still be fading out, its buttons gone.
+  await until('a click on Restart to Update', () => {
+    console.log(`panel: ${panel('restart-to-update')}`)
+    return true
+  })
   await until('an update to be installed', () => version() !== '0.0.1')
   await until('the update to relaunch', () => running() && panel().includes('settings'))
   if (version() !== '0.0.3') throw new Error(`updated to ${version()}, not the latest, 0.0.3`)
@@ -117,4 +121,5 @@ try {
 } finally {
   feed.close()
   await cleanup()
+  rmSync(dir, { recursive: true, force: true })
 }
