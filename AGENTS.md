@@ -43,7 +43,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
   Parakeet Ultra and Parakeet CTC 110M are CC-BY-4.0, which requires credit; Silero VAD is MIT.
 - Tony ships as a Developer ID signed, notarized download that updates itself.
   The Mac App Store is out: its terms conflict with the AGPL.
-- The About window shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Parakeet CTC 110M (NVIDIA), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
+- About (a page of the menu bar panel) shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Parakeet CTC 110M (NVIDIA), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
 - CI builds every release from a tagged commit, so each binary's source is public.
 - A server we write for Tony (sync, cloud features) is AGPL too, lives in this repo, and offers its source to its users (AGPL section 13).
 

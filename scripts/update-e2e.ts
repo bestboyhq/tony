@@ -1,6 +1,6 @@
 // `node scripts/update-e2e.ts`: in-app updates end to end, the way a user gets them. A signed build of
-// 0.0.1 finds 0.0.2 on a local feed, downloads it, and "Restart to Update" (clicked in the menu bar
-// panel) relaunches it as 0.0.2. CI runs it before every release.
+// 0.0.1 finds 0.0.2 on a local feed, 0.0.3 ships before the user gets to it, and "Restart to Update"
+// (clicked in the menu bar panel) relaunches it as 0.0.3, the latest, in one go. CI runs it before every release.
 // Needs Accessibility for the terminal (it clicks the panel). It builds under its own name, app id, and
 // a throwaway EdDSA key, so an installed Tony, its settings, and the real signing key stay untouched.
 import { execFileSync, spawn } from 'node:child_process'
@@ -74,18 +74,19 @@ mkdirSync(dir, { recursive: true })
 const keyFile = join(dir, 'ed25519.key')
 writeFileSync(keyFile, seed.toString('base64'), { mode: 0o600 })
 
-// The feed: 0.0.2's appcast.xml and zip, on a free port (other runs may hold any fixed one).
+// The feed: the latest release's appcast.xml and zip, on a free port (other runs may hold any fixed one).
+let latest = '0.0.2'
 const feed = createServer((req, res) => {
-  const file = join(dir, '0.0.2', decodeURIComponent(new URL(req.url!, 'http://x').pathname))
+  const file = join(dir, latest, decodeURIComponent(new URL(req.url!, 'http://x').pathname))
   if (!existsSync(file)) return res.writeHead(404).end()
   createReadStream(file).pipe(res)
 })
 await new Promise<void>((resolve) => feed.listen(0, '127.0.0.1', resolve))
 const url = `http://127.0.0.1:${(feed.address() as AddressInfo).port}/`
 
-// Two signed builds with the update zip and feed; no DMG, no notarization (Sparkle checks the EdDSA
+// Signed builds with the update zip and feed; no DMG, no notarization (Sparkle checks the EdDSA
 // signature and the code signature, not the ticket).
-for (const v of ['0.0.1', '0.0.2']) {
+for (const v of ['0.0.1', '0.0.2', '0.0.3']) {
   run('node', [join(import.meta.dirname, 'package.ts'), '--update', '--version', v, '--name', NAME, '--id', ID, '--out', join(dir, v),
     '--feed', `${url}appcast.xml`, '--download-url', url, '--public-key', pub, '--ed-key-file', keyFile])
 }
@@ -97,10 +98,12 @@ try {
   spawn('open', ['-g', app], { stdio: 'ignore', detached: true }).unref()
   await until('0.0.1 to start', running)
   await until('Restart to Update in the panel', () => panel().includes('restart-to-update'))
+  latest = '0.0.3' // a release ships while the user hasn't restarted yet
   console.log(`panel: ${panel('restart-to-update')}`)
-  await until('0.0.2 to be installed', () => version() === '0.0.2')
-  await until('0.0.2 to relaunch', () => running() && panel().includes('settings'))
-  console.log(`ok: 0.0.1 updated itself to ${version()} and relaunched`)
+  await until('an update to be installed', () => version() !== '0.0.1')
+  await until('the update to relaunch', () => running() && panel().includes('settings'))
+  if (version() !== '0.0.3') throw new Error(`updated to ${version()}, not the latest, 0.0.3`)
+  console.log(`ok: 0.0.1 updated itself to ${version()}, the latest, and relaunched`)
 } catch (error) {
   // What the app saw, since CI shows nothing else.
   try {

@@ -35,8 +35,7 @@ struct AboutView: View {
             .font(.caption)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(28)
-        .frame(width: 380)
+        .padding([.horizontal, .bottom], 24)
     }
 
     private func credit(_ name: String, _ detail: String, license: String, url: String) -> some View {
