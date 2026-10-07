@@ -33,7 +33,10 @@ final class Dictation {
     }
 
     private(set) var phase = Phase.idle {
-        didSet { if phase != oldValue { onPhase?(phase) } }
+        didSet {
+            if phase != oldValue { onPhase?(phase) }
+            if (phase == .listening) != (oldValue == .listening) { phase == .listening ? ducking.duck() : ducking.restore() }
+        }
     }
     private(set) var handsFree = false
     /// The last dictation, in memory only, for the menu bar to copy or paste again.
@@ -41,6 +44,7 @@ final class Dictation {
     private(set) var stats = Stats.load()
 
     @ObservationIgnored let mic = Mic()
+    @ObservationIgnored let ducking = Ducking()
     @ObservationIgnored private(set) var hotkey: Hotkey!
     @ObservationIgnored var language: Language?
     @ObservationIgnored var onPhase: ((Phase) -> Void)?

@@ -181,3 +181,38 @@ import Testing
         #expect(stats.longestStreak == 3)
     }
 }
+
+/// Fades the Mac's real output for about three seconds; skipped where software can't set its volume.
+@Suite struct DuckingTests {
+    @Test(.enabled(if: (Devices.defaultOutput.flatMap(Devices.volume) ?? 0) > 0))
+    func fadesOutAndBackToTheUsersVolume() async throws {
+        let id = try #require(Devices.defaultOutput)
+        let volume = try #require(Devices.volume(id))
+        defer { Devices.setVolume(id, volume) }
+        let ducking = Ducking()
+        func settle(_ seconds: Double) async throws { try await Task.sleep(for: .seconds(seconds + 0.2)) }
+
+        ducking.duck()
+        try await settle(Ducking.fadeOut)
+        #expect(Devices.volume(id) == 0)
+        ducking.restore()
+        try await settle(Ducking.fadeIn)
+        #expect(Devices.volume(id) == volume)
+
+        // Turned up while Tony listened: the user's volume stays.
+        ducking.duck()
+        try await settle(Ducking.fadeOut)
+        Devices.setVolume(id, volume / 2)
+        let turnedUp = Devices.volume(id)
+        ducking.restore()
+        try await settle(Ducking.fadeIn)
+        #expect(Devices.volume(id) == turnedUp)
+
+        // Tony quit while faded out: the next launch brings the sound back.
+        ducking.duck()
+        try await settle(Ducking.fadeOut)
+        _ = Ducking()
+        try await settle(0)
+        #expect(Devices.volume(id) == turnedUp)
+    }
+}

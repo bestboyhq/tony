@@ -1,3 +1,4 @@
+import AudioToolbox
 import CoreAudio
 import IOKit
 
@@ -28,6 +29,35 @@ nonisolated enum Devices {
 
     static var defaultInput: AudioDeviceID? {
         value(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultInputDevice)
+    }
+
+    static var defaultOutput: AudioDeviceID? {
+        value(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultOutputDevice)
+    }
+
+    static func uid(_ id: AudioDeviceID) -> String? { string(id, kAudioDevicePropertyDeviceUID) }
+
+    static func device(uid: String) -> AudioDeviceID? {
+        let ids: [AudioDeviceID] = array(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDevices)
+        return ids.first { self.uid($0) == uid }
+    }
+
+    /// An output's volume, 0...1, as the menu bar slider shows it; nil when software can't set it (HDMI, some USB).
+    static func volume(_ id: AudioDeviceID) -> Float32? {
+        var address = address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume, scope: kAudioDevicePropertyScopeOutput)
+        var settable: DarwinBoolean = false
+        var volume: Float32 = 0
+        var size = UInt32(MemoryLayout<Float32>.size)
+        guard AudioObjectIsPropertySettable(id, &address, &settable) == noErr, settable.boolValue,
+              AudioObjectGetPropertyData(id, &address, 0, nil, &size, &volume) == noErr else { return nil }
+        return volume
+    }
+
+    @discardableResult
+    static func setVolume(_ id: AudioDeviceID, _ volume: Float32) -> Bool {
+        var address = address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume, scope: kAudioDevicePropertyScopeOutput)
+        var volume = volume
+        return AudioObjectSetPropertyData(id, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &volume) == noErr
     }
 
     /// A MacBook's built-in mic is off while the lid is closed.
