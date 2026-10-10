@@ -126,22 +126,12 @@ struct OnboardingView: View {
         .onDisappear { LoginItem.set(launchAtLogin) }  // Done, or the window closed
     }
 
-    /// "Downloading, 38% · About 2 minutes remaining", once the pace is known.
+    /// "Downloading, 38% · ~2min left", once the pace is known.
     private var downloading: String {
         let percent = "Downloading, \(modelStatus ?? "")"
         guard let remaining = speech.downloadRemaining else { return percent }
-        return "\(percent) · " + (remaining < 60 ? "Less than a minute remaining" : Self.timeLeft.string(from: remaining) ?? "")
+        return "\(percent) · ~\(Int((remaining / 60).rounded(.up)))min left"
     }
-
-    private static let timeLeft: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.hour, .minute]
-        formatter.unitsStyle = .full
-        formatter.maximumUnitCount = 1
-        formatter.includesApproximationPhrase = true
-        formatter.includesTimeRemainingPhrase = true
-        return formatter
-    }()
 
     /// The model's progress in a word, for its line while another step is open.
     private var modelStatus: String? {
