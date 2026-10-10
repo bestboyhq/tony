@@ -4,19 +4,36 @@ import AppKit
 enum Mark {
     /// An 18 pt template image, drawn in code so it is crisp at every scale.
     /// While listening it inverts to a filled tile with the mark cut out, like Grip's recording icon,
-    /// so the state reads at a glance in a monochrome menu bar.
-    @MainActor static func menuBarImage(listening: Bool) -> NSImage {
+    /// so the state reads at a glance in a monochrome menu bar. While the model downloads, a ring fills
+    /// clockwise around a smaller mark.
+    @MainActor static func menuBarImage(listening: Bool, progress: Double? = nil) -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            let small = mic(head: CGSize(width: 4, height: 6.4), gap: 1.2, stem: 1.2, line: 1.5)
+            NSColor.black.set()
+            if let progress {
+                NSBezierPath(cgPath: small).fill()
+                // 2 pt from the edge in: whole pixels at 1x too.
+                let track = NSBezierPath(ovalIn: CGRect(x: 1, y: 1, width: 16, height: 16))
+                track.lineWidth = 2
+                NSColor.black.withAlphaComponent(0.25).setStroke()
+                track.stroke()
+                let done = NSBezierPath()
+                done.appendArc(withCenter: NSPoint(x: 9, y: 9), radius: 8, startAngle: -90, endAngle: -90 + 360 * progress)
+                done.lineWidth = 2
+                done.lineCapStyle = .round
+                NSColor.black.setStroke()
+                done.stroke()
+                return true
+            }
             let shape = listening
                 ? CGPath(roundedRect: CGRect(x: 0.5, y: 0.5, width: 17, height: 17), cornerWidth: 4.2, cornerHeight: 4.2, transform: nil)
-                    .subtracting(mic(head: CGSize(width: 4, height: 6.4), gap: 1.2, stem: 1.2, line: 1.5))
+                    .subtracting(small)
                 : mic(head: CGSize(width: 6, height: 9.6), gap: 1.4, stem: 1.8, line: 1.7)
-            NSColor.black.set()
             NSBezierPath(cgPath: shape).fill()
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = listening ? "Tony, listening" : "Tony"
+        image.accessibilityDescription = progress != nil ? "Tony, getting its speech model" : listening ? "Tony, listening" : "Tony"
         return image
     }
 
