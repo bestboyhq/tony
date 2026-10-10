@@ -218,3 +218,12 @@ import Testing
         try await reaches(turnedUp)
     }
 }
+
+@Suite struct DownloadTests {
+    @Test func timeLeftFollowsThePaceSoFar() {
+        #expect(Speech.remaining(elapsed: 30, done: 0.25) == 90)
+        #expect(Speech.remaining(elapsed: 1, done: 0.5) == nil)  // too soon to tell
+        #expect(Speech.remaining(elapsed: 30, done: 0.01) == nil)  // too little to go on
+        #expect(Speech.remaining(elapsed: 30, done: 1) == nil)
+    }
+}

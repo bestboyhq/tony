@@ -12,6 +12,7 @@ Speech to text on the Neural Engine.
   Other languages need a fallback model.
 - The model downloads on first run while onboarding asks for permissions: in the background, resumable, verified, with real progress.
   It lives in Application Support, and a missing or corrupt model downloads again.
+  FluidAudio reports a model's download as the first half of its fraction and compiling as the second: scale the download to fill the bar.
 - The first Core ML load compiles for the Neural Engine and is slow.
   Load at launch and keep the model warm, so the first key press finds it ready.
 - Trim silence at both ends with voice activity detection, and insert nothing when there is no speech.

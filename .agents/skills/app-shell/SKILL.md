@@ -23,6 +23,9 @@ The native macOS app around everything else.
   It asks for Microphone and Accessibility, each just in time with a one-line reason and one system prompt per request.
   Status is live: Accessibility has no callback, so poll `AXIsProcessTrusted`.
   The model downloads in parallel, an optional field takes the user's words (names, jargon), and a practice field ends onboarding with a first dictation.
+  One step at a time: the first step left is open with its reason and action, the rest are a line each, so a user waiting on the download sees only the download.
+  A step opens at once and fades in: the window takes its new height outside SwiftUI's animation, so an animated height moves the whole window's content around its center.
+  The download shows its time left, and closing the window ends onboarding for now; until the model is ready, the menu bar icon is a ring filling around the mark.
 - A grant can need a relaunch or a fresh event tap before it works: detect that before claiming success.
   A revoked permission is detected and explained in the HUD and the panel.
 - Launch at login through `SMAppService`, offered in onboarding and on by default.

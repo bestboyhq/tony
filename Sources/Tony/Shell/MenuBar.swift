@@ -26,7 +26,6 @@ final class MenuBar: NSObject, NSWindowDelegate {
     init(app: AppDelegate) {
         self.app = app
         super.init()
-        item.button?.image = Mark.menuBarImage(listening: false)
         item.button?.target = self
         item.button?.action = #selector(click)
         // On mouse up: a menu opened on mouse down takes the mouse up from the button, which then spends the
@@ -45,7 +44,7 @@ final class MenuBar: NSObject, NSWindowDelegate {
                 dot.centerYAnchor.constraint(equalTo: button.centerYAnchor, constant: -6.5),
             ])
         }
-        showUpdate()
+        watchIcon()
         // Non-activating from the start: set later, the window server still activates Tony on a click.
         panel = Panel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.contentViewController = NSHostingController(rootView: MenuBarView(app: app, menuBar: self))
@@ -63,22 +62,28 @@ final class MenuBar: NSObject, NSWindowDelegate {
 
     func setListening(_ listening: Bool) {
         self.listening = listening
-        item.button?.image = Mark.menuBarImage(listening: listening)
-        showUpdate()
+        showIcon()
         // The panel holds the keyboard: a dictation lands in its field, or, from Home, back in the user's app.
         if listening, page == .home { close() }
     }
 
-    /// The dot on the icon, for as long as an update is available, and again when that changes.
-    private func showUpdate() {
+    /// The mark, a ring filling around it while the model downloads, and a dot while an update is available.
+    private func showIcon() {
+        let available = app.updates.available != nil
+        let progress = app.speech.progress
+        item.button?.image = Mark.menuBarImage(listening: listening, progress: progress)
+        // The listening icon and the ring fill the corner.
+        dot.isHidden = !available || listening || progress != nil
+        dot.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+        item.button?.setAccessibilityLabel(progress != nil ? "Tony, getting its speech model" : available ? "Tony, update available" : "Tony")
+    }
+
+    /// Shows the icon, and again whenever what it shows changes. Once: each call adds a watch that renews itself.
+    private func watchIcon() {
         withObservationTracking {
-            let available = app.updates.available != nil
-            // The listening icon fills the corner.
-            dot.isHidden = !available || listening
-            dot.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
-            item.button?.setAccessibilityLabel(available ? "Tony, update available" : "Tony")
+            showIcon()
         } onChange: { [weak self] in
-            Task { @MainActor in self?.showUpdate() }
+            Task { @MainActor in self?.watchIcon() }
         }
     }
 

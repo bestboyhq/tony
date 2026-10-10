@@ -28,8 +28,33 @@ final class Speech {
     @ObservationIgnored private var wordList: [String] = []
     @ObservationIgnored private var ctc: Task<CtcModels, Error>?
     @ObservationIgnored private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
+    /// When the download began: its pace since gives the time it has left.
+    @ObservationIgnored private var downloadStarted = Date()
 
     var isReady: Bool { state == .ready }
+
+    /// How far the model is on its way, until it is ready: loading counts as downloaded.
+    var progress: Double? {
+        switch state {
+        case let .downloading(fraction): fraction
+        case .loading: 1
+        default: nil
+        }
+    }
+
+    /// About how long the download has left, once its pace is known.
+    var downloadRemaining: TimeInterval? {
+        guard case let .downloading(fraction) = state else { return nil }
+        return Self.remaining(elapsed: Date().timeIntervalSince(downloadStarted), done: fraction)
+    }
+
+    /// The pace so far, over what is left; nil until there is enough of it to go on.
+    // ponytail: the average since the start, so a resumed download, whose first files are on disk already, looks
+    // fast for its first seconds; time from the first fresh byte if that estimate ever matters.
+    static func remaining(elapsed: TimeInterval, done: Double) -> TimeInterval? {
+        guard elapsed >= 3, done >= 0.02, done < 1 else { return nil }
+        return elapsed / done * (1 - done)
+    }
 
     func prepare() async {
         switch state {
@@ -39,13 +64,18 @@ final class Speech {
         let started = Date()
         do {
             state = .downloading(0)
+            downloadStarted = Date()
             // From Hugging Face once, resumable, and downloaded again if missing or corrupt.
             let vad = try await VadManager(config: VadConfig(defaultThreshold: Session.speechThreshold))
             let models = try await AsrModels.downloadAndLoad(version: Self.version) { [weak self] progress in
-                let next: State = if case .compiling = progress.phase { .loading } else { .downloading(progress.fractionCompleted) }
+                // FluidAudio reports a model's download as the first half of its fraction and compiling as the second,
+                // so the download alone fills the bar. In whole percents: bytes arrive hundreds of times a second.
+                let downloaded = (min(progress.fractionCompleted / 0.5, 1) * 100).rounded(.down) / 100
+                let next: State = if case .compiling = progress.phase { .loading } else { .downloading(downloaded) }
                 Task { @MainActor in
-                    switch self?.state {
-                    case .downloading, .loading: self?.state = next
+                    guard let self, self.state != next else { return }
+                    switch self.state {
+                    case .downloading, .loading: self.state = next
                     default: break  // a late update must not hide .ready or .failed
                     }
                 }

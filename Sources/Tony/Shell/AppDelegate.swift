@@ -151,7 +151,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func showOnboarding() {
         show("onboarding", title: "Welcome to Tony") {
             OnboardingView(permissions: permissions, speech: speech) { [weak self] in
-                Prefs.onboarded = true
                 self?.windows["onboarding"]?.close()
             }
         }
@@ -188,6 +187,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, let id = windows.first(where: { $0.value === window })?.key else { return }
+        // Done or closed, onboarding is over: a missing permission is explained in the HUD and the menu from here.
+        if id == "onboarding" { Prefs.onboarded = true }
         windows[id] = nil
         if windows.isEmpty { NSApp.setActivationPolicy(.accessory) }
     }
