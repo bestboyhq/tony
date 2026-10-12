@@ -150,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showOnboarding() {
         show("onboarding", title: "Welcome to Tony") {
-            OnboardingView(permissions: permissions, speech: speech) { [weak self] in
+            OnboardingView(permissions: permissions, speech: speech, hotkey: dictation.hotkey) { [weak self] in
                 self?.windows["onboarding"]?.close()
             }
         }
@@ -196,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func perform(_ action: Dictation.Action) {
         switch action {
         case .copy: break
-        case .openAccessibility: Permissions.openPrivacy("Privacy_Accessibility")
+        case .openAccessibility: permissions.requestAccessibility()
         case .openMicrophone: Permissions.openPrivacy("Privacy_Microphone")
         case .openSettings: showSettings()
         case .retryModel: Task { await speech.prepare() }

@@ -2,27 +2,29 @@ import ServiceManagement
 import SwiftUI
 
 /// From install to a first dictation in a minute, without docs. One step at a time: the first one left is
-/// open, the rest are a line each. Each permission is asked just in time with a one-line reason; the model
-/// downloads meanwhile; a practice field ends it with a first dictation.
+/// open, the rest are a line each. It asks for the key first, then each permission just in time with a
+/// one-line reason; the model downloads meanwhile; a practice field ends it with a first dictation.
 struct OnboardingView: View {
     let permissions: Permissions
     let speech: Speech
+    let hotkey: Hotkey
     let done: () -> Void
     @AppStorage(Prefs.hotkeyKey) private var hotkeyCode = Int(HotkeyKey.fn.keyCode)
     @State private var launchAtLogin = true
     @State private var practice = ""
+    @State private var keyDone = false
     @State private var wordsDone = false
-    @State private var fnConflict = FnKeyAction.conflicts
     @FocusState private var practiceFocused: Bool
 
-    private enum Step { case microphone, accessibility, model, words, practice }
+    private enum Step { case key, microphone, accessibility, model, words, practice }
 
     private var key: String { HotkeyKey(keyCode: UInt16(hotkeyCode)).name }
     private var accessibilityDone: Bool { permissions.accessibility && !permissions.needsRelaunch }
 
     /// The first step left; the model downloads from launch, so it can be done before the permissions are.
     private var current: Step {
-        if permissions.microphone != .authorized { .microphone }
+        if !keyDone { .key }
+        else if permissions.microphone != .authorized { .microphone }
         else if !accessibilityDone { .accessibility }
         else if !speech.isReady { .model }
         else if !wordsDone { .words }
@@ -44,13 +46,21 @@ struct OnboardingView: View {
             }
 
             VStack(spacing: 0) {
-                StepRow(number: 1, title: "Microphone", done: permissions.microphone == .authorized, open: current == .microphone) {
+                StepRow(number: 1, title: "Your key", done: keyDone, open: current == .key) {
+                    Text("Which key will you hold to talk?")
+                    HotkeyPicker(hotkey: hotkey)
+                    FnWarning()
+                    Button("Continue") { keyDone = true }
+                        .buttonStyle(.borderedProminent)
+                }
+                Divider()
+                StepRow(number: 2, title: "Microphone", done: permissions.microphone == .authorized, open: current == .microphone) {
                     Text(permissions.microphone == .notDetermined ? "So Tony hears you while you hold the key." : "Turn on Tony in Privacy & Security > Microphone.")
                     Button(permissions.microphone == .notDetermined ? "Allow" : "Open System Settings") { permissions.requestMicrophone() }
                         .buttonStyle(.borderedProminent)
                 }
                 Divider()
-                StepRow(number: 2, title: "Accessibility", done: accessibilityDone, open: current == .accessibility) {
+                StepRow(number: 3, title: "Accessibility", done: accessibilityDone, open: current == .accessibility) {
                     if permissions.needsRelaunch {
                         Text("Allowed. macOS needs Tony to restart to use it.")
                         Button("Relaunch") { Permissions.relaunch() }
@@ -62,7 +72,7 @@ struct OnboardingView: View {
                     }
                 }
                 Divider()
-                StepRow(number: 3, title: "Speech model", done: speech.isReady, open: current == .model, status: modelStatus) {
+                StepRow(number: 4, title: "Speech model", done: speech.isReady, open: current == .model, status: modelStatus) {
                     if case let .failed(message) = speech.state {
                         Text(message)
                         Button("Try Again") { Task { await speech.prepare() } }
@@ -79,7 +89,7 @@ struct OnboardingView: View {
                     }
                 }
                 Divider()
-                StepRow(number: 4, title: "Your words", done: wordsDone, open: current == .words) {
+                StepRow(number: 5, title: "Your words", done: wordsDone, open: current == .words) {
                     Text("Names, brands, and jargon, spelled your way. Optional.")
                     WordsField(speech: speech)
                     WordsFooter(speech: speech, detail: "Press Return after each one.")
@@ -87,20 +97,9 @@ struct OnboardingView: View {
                         .buttonStyle(.borderedProminent)
                 }
                 Divider()
-                StepRow(number: 5, title: "Try it", done: false, open: current == .practice) {
+                StepRow(number: 6, title: "Try it", done: false, open: current == .practice) {
                     Text("Hold \(key), say “Hello, Tony,” and let go.")
-                    if hotkeyCode == Int(HotkeyKey.fn.keyCode), fnConflict {
-                        HStack {
-                            Label("Pressing fn alone also \(FnKeyAction.name).", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.orange)
-                            Spacer(minLength: 8)
-                            Button("Fix") {
-                                FnKeyAction.setDoNothing()
-                                fnConflict = FnKeyAction.conflicts
-                            }
-                            .help("Sets Keyboard > Press 🌐 key to: Do Nothing")
-                        }
-                    }
+                    FnWarning()
                     TextField("Your first dictation lands here", text: $practice, axis: .vertical)
                         .font(.system(size: 13))
                         .lineLimit(2...4)

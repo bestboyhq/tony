@@ -16,6 +16,7 @@ final class Permissions {
     /// Called when the mic becomes usable, to prepare it.
     @ObservationIgnored var onMicrophone: (() -> Void)?
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private let guide = AccessibilityGuide()
 
     var ready: Bool { microphone == .authorized && accessibility && !needsRelaunch }
 
@@ -38,6 +39,7 @@ final class Permissions {
         let trusted = AXIsProcessTrusted()
         if trusted != accessibility || (trusted && needsRelaunch) {
             accessibility = trusted
+            if trusted { guide.stop() }
             let tapUp = onAccessibility?(trusted) ?? trusted
             needsRelaunch = trusted && !tapUp
             schedule()
@@ -54,8 +56,10 @@ final class Permissions {
         }
     }
 
-    /// Shows the system prompt once; after that, the pane in System Settings.
+    /// Shows the system prompt once; after that, the pane in System Settings. Either way, a tile under System
+    /// Settings holds Tony to drag into the list.
     func requestAccessibility() {
+        guide.start()
         let prompted = UserDefaults.standard.bool(forKey: "promptedAccessibility")
         if prompted {
             Self.openPrivacy("Privacy_Accessibility")

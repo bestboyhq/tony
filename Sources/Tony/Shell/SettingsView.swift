@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import FluidAudio
 import SwiftUI
 
@@ -6,43 +7,16 @@ struct SettingsView: View {
     let dictation: Dictation
     let speech: Speech
     let updates: Updates
-    @AppStorage(Prefs.hotkeyKey) private var hotkeyCode = Int(HotkeyKey.fn.keyCode)
     @AppStorage(Prefs.micKey) private var mic = ""
     @AppStorage(Prefs.languageKey) private var language = ""
     @State private var devices = Devices.inputs()
     @State private var launchAtLogin = LoginItem.isOn
-    @State private var fnConflict = FnKeyAction.conflicts
-    @State private var recorder: Any?
-
-    private var keys: [HotkeyKey] {
-        let current = HotkeyKey(keyCode: UInt16(hotkeyCode))
-        return HotkeyKey.choices.contains(current) ? HotkeyKey.choices : HotkeyKey.choices + [current]
-    }
 
     var body: some View {
         Form {
             Section {
-                LabeledContent("Hold to dictate") {
-                    HStack {
-                        Picker("Hold to dictate", selection: $hotkeyCode) {
-                            ForEach(keys, id: \.keyCode) { Text($0.name).tag(Int($0.keyCode)) }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                        Button(recorder == nil ? "Record" : "Press a modifier…") { toggleRecording() }
-                    }
-                }
-                if hotkeyCode == Int(HotkeyKey.fn.keyCode), fnConflict {
-                    LabeledContent {
-                        Button("Fix") {
-                            FnKeyAction.setDoNothing()
-                            fnConflict = FnKeyAction.conflicts
-                        }
-                    } label: {
-                        Label("Pressing fn alone also \(FnKeyAction.name).", systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                    }
-                }
+                LabeledContent("Hold to dictate") { HotkeyPicker(hotkey: dictation.hotkey) }
+                FnWarning()
             } footer: {
                 Text("Double-tap for hands-free, tap again to finish. Esc cancels.")
                     .font(.callout)
@@ -91,36 +65,11 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
-        .onChange(of: hotkeyCode) { dictation.hotkey.setKey(HotkeyKey(keyCode: UInt16(hotkeyCode))) }
         .onChange(of: mic) { dictation.mic.use(uid: mic.isEmpty ? nil : mic) }
         .onChange(of: language) { dictation.language = Language(rawValue: language) }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             devices = Devices.inputs()
-            fnConflict = FnKeyAction.conflicts
         }
-        .onDisappear { stopRecording() }
-    }
-
-    /// Captures the next modifier the user presses on its own.
-    private func toggleRecording() {
-        if recorder != nil { return stopRecording() }
-        recorder = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
-            if event.type == .flagsChanged, HotkeyKey.isModifier(event.keyCode), event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty == false {
-                hotkeyCode = Int(event.keyCode)
-                stopRecording()
-                return nil
-            }
-            if event.type == .keyDown {
-                NSSound.beep()  // only a modifier on its own types nothing
-                return nil
-            }
-            return event
-        }
-    }
-
-    private func stopRecording() {
-        if let recorder { NSEvent.removeMonitor(recorder) }
-        recorder = nil
     }
 
     private static let languages = Language.allCases.sorted { name($0) < name($1) }
@@ -131,6 +80,89 @@ struct SettingsView: View {
 
 extension Bundle {
     var version: String { object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
+}
+
+/// The key held to talk: a modifier from the list, or Other… and a press of any modifier. The tap gets it at once.
+struct HotkeyPicker: View {
+    let hotkey: Hotkey
+    @AppStorage(Prefs.hotkeyKey) private var hotkeyCode = Int(HotkeyKey.fn.keyCode)
+    @State private var recorder: Any?
+
+    /// The tag of Other…, which waits for the key instead of naming one.
+    private static let other = -1
+
+    private var keys: [HotkeyKey] {
+        let current = HotkeyKey(keyCode: UInt16(hotkeyCode))
+        return HotkeyKey.choices.contains(current) ? HotkeyKey.choices : HotkeyKey.choices + [current]
+    }
+
+    private var selection: Binding<Int> {
+        Binding {
+            recorder == nil ? hotkeyCode : Self.other
+        } set: { tag in
+            if tag == Self.other { return startRecording() }
+            stopRecording()
+            hotkeyCode = tag
+        }
+    }
+
+    var body: some View {
+        Picker("Hold to dictate", selection: selection) {
+            ForEach(keys, id: \.keyCode) { Text($0.name).tag(Int($0.keyCode)) }
+            Divider()
+            Text(recorder == nil ? "Other…" : "Press a modifier…").tag(Self.other)
+        }
+        .labelsHidden()
+        .fixedSize()
+        .onChange(of: hotkeyCode) { hotkey.setKey(HotkeyKey(keyCode: UInt16(hotkeyCode))) }
+        .onDisappear { stopRecording() }
+    }
+
+    /// Captures the next modifier the user presses; Esc gives up.
+    private func startRecording() {
+        guard recorder == nil else { return }
+        recorder = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged, .keyDown]) { event in
+            if event.type == .flagsChanged, HotkeyKey.isModifier(event.keyCode), event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty == false {
+                hotkeyCode = Int(event.keyCode)
+                stopRecording()
+                return nil
+            }
+            if event.type == .keyDown {
+                if event.keyCode == kVK_Escape { stopRecording() } else { NSSound.beep() }  // only a modifier on its own types nothing
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func stopRecording() {
+        if let recorder { NSEvent.removeMonitor(recorder) }
+        recorder = nil
+    }
+}
+
+/// With fn as the key, pressing it also runs the action under Keyboard > "Press 🌐 key to": Fix sets Do Nothing.
+struct FnWarning: View {
+    @AppStorage(Prefs.hotkeyKey) private var hotkeyCode = Int(HotkeyKey.fn.keyCode)
+    @State private var conflict = FnKeyAction.conflicts
+
+    var body: some View {
+        if hotkeyCode == Int(HotkeyKey.fn.keyCode), conflict {
+            HStack {
+                Label("fn also \(FnKeyAction.name).", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Spacer(minLength: 8)
+                Button("Fix") {
+                    FnKeyAction.setDoNothing()
+                    conflict = FnKeyAction.conflicts
+                }
+                .help("Sets Keyboard > Press 🌐 key to: Do Nothing")
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                conflict = FnKeyAction.conflicts
+            }
+        }
+    }
 }
 
 /// The user's words as tags above a field: type one, then Return or a comma. Each word reaches the speech
