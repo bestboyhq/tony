@@ -10,7 +10,8 @@ The global key that starts and stops dictation.
 - Hold to talk, release to insert.
   A double tap locks hands-free mode until the next tap, and Esc cancels any dictation without inserting.
 - A tap too short to hold a word is an accident: insert nothing.
-- The default hotkey is a modifier on its own (fn, right ⌥, right ⌘), since it types nothing.
+- The hotkey is a modifier on its own (fn, right ⌥, right ⌘), since it types nothing.
+  Onboarding asks for it before anything else, with fn preselected: many keyboards not made by Apple have no fn key.
   Only a modifier pressed and released alone starts dictation; a chord typed while it is held (⌥←, ⌘C) cancels it.
 - The fn (Globe) key also runs the system action set under Keyboard > "Press 🌐 key to": emoji, input source, or Apple Dictation.
   When fn is the hotkey, read `AppleFnUsageType` in `com.apple.HIToolbox` and offer to set it to Do Nothing.

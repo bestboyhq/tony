@@ -156,8 +156,8 @@ Tony goes online only to download the speech model once (about 600 MB), the mode
 | Double-tap **fn** | Hands-free: talk as long as you like, tap again to finish |
 | **Esc** | Cancel, nothing is typed |
 
-Prefer another key?
-Pick right ⌥, right ⌘, or another modifier in Settings, or press Record and tap the one you want.
+Tony asks for your key when it first opens: fn, right ⌥, right ⌘, or any other modifier (pick Other… and press it).
+Settings changes it later.
 When fn is your key, Tony offers to stop it from also opening the emoji picker.
 
 Settings has four choices: the key, the mic, the language, and your words.
@@ -169,9 +169,9 @@ Everything else is a tuned default.
 1. [Download Tony](https://github.com/bestboyhq/tony/releases/latest), open the disk image, and drag Tony to Applications.
    Open it from the disk image or Downloads instead, and Tony offers to move itself there.
 2. Open it.
-   Tony asks for the microphone and Accessibility, one at a time, while the speech model downloads.
+   Tony asks which key you'll hold, then for the microphone and Accessibility, one at a time, while the speech model downloads.
    Add your words now or later.
-3. Hold fn and say something into the practice field.
+3. Hold your key and say something into the practice field.
    That's it.
 
 Tony lives in the menu bar, opens at login, and updates itself.

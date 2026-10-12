@@ -380,7 +380,7 @@ private struct Subpage<Content: View>: View {
 /// Liquid Glass where the system has it, vibrancy before that, outlined with Increase Contrast, with a soft
 /// shadow in a clear margin. Clicks on the margin and the shadow go through to the app under them. Clipped to its
 /// shape: Liquid Glass draws its own shadow just past its edge, which reads as a dark outline.
-private struct PanelBackground: ViewModifier {
+struct PanelBackground: ViewModifier {
     @Environment(\.colorSchemeContrast) private var contrast
     static let radius: CGFloat = 16
     static let margin: CGFloat = 32
