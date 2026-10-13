@@ -1,5 +1,7 @@
+import AVFoundation
 import Carbon
 import FluidAudio
+import Synchronization
 import Testing
 @testable import Tony
 
@@ -183,7 +185,7 @@ import Testing
 }
 
 /// Fades the Mac's real output for about three seconds; skipped where software can't set its volume.
-@Suite struct DuckingTests {
+@Suite(.serialized) struct DuckingTests {
     @Test(.enabled(if: (Devices.defaultOutput.flatMap(Devices.volume) ?? 0) > 0))
     func fadesOutAndBackToTheUsersVolume() async throws {
         let id = try #require(Devices.defaultOutput)
@@ -216,6 +218,34 @@ import Testing
         try await reaches(0)
         _ = Ducking()
         try await reaches(turnedUp)
+    }
+
+    /// Tony quit while AirPods it faded out were away: they get their volume back when they are plugged in.
+    @Test func keepsTheVolumeOfADeviceThatIsAway() async throws {
+        UserDefaults.standard.set(["away": 0.5], forKey: Ducking.savedKey)
+        defer { UserDefaults.standard.removeObject(forKey: Ducking.savedKey) }
+        _ = Ducking()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(UserDefaults.standard.dictionary(forKey: Ducking.savedKey) as? [String: Double] == ["away": 0.5])
+    }
+}
+
+/// Opens each wired mic for a second and a half; skipped where Tony may not use the mic.
+@Suite struct MicTests {
+    @Test(.enabled(if: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized))
+    func oneEngineHearsEveryMic() async throws {
+        let mic = Mic()
+        for device in Devices.inputs() where device.isBuiltIn || device.transport == kAudioDeviceTransportTypeUSB {
+            let count = Atomic<Int>(0)
+            mic.use(uid: device.uid)
+            mic.start(keyDownAt: 0, onSamples: { count.add($0.count, ordering: .relaxed) }, onError: { Issue.record($0) })
+            try await Task.sleep(for: .seconds(1.5))
+            let summary = await mic.stop().value
+            #expect(summary.device?.uid == device.uid)
+            // 16 kHz for 1.5 s, less the time the device takes to start (half a second for a Studio Display)
+            // and to restart after the configuration change its selection posts.
+            #expect((8000...25000).contains(count.load(ordering: .relaxed)), "\(device.name)")
+        }
     }
 }
 

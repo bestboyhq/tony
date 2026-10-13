@@ -2,9 +2,10 @@ import AVFoundation
 import CoreAudio
 import OSLog
 import Synchronization
+import TonyObjC
 
 /// Microphone capture for one dictation at a time. The mic opens on `start` and closes on `stop`, so the
-/// orange dot shows only while Tony listens. The engine is built and prepared between dictations, so
+/// orange dot shows only while Tony listens. The engine is wired and prepared between dictations, so
 /// `start` only has to open the device. Samples reach `onSamples` as 16 kHz mono Float32, what the model
 /// wants, whatever the device delivers.
 nonisolated final class Mic: @unchecked Sendable {
@@ -34,9 +35,13 @@ nonisolated final class Mic: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.bestboyhq.tony.mic", qos: .userInteractive)
     private let capture = Capture()
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "mic")
+    /// One engine for good, rewired on each device change: freeing one while a device change settles
+    /// crashes inside AVFAudio, whose IO unit listener still messages the freed engine.
+    private let engine = AVAudioEngine()
+    private let sink: AVAudioSinkNode
 
     // Confined to `queue`.
-    private var engine: AVAudioEngine?
+    /// The device the engine is wired to; nil when it isn't wired.
     private var device: InputDevice?
     private var converter: AVAudioConverter?
     private var deviceFormat: AVAudioFormat?
@@ -45,15 +50,49 @@ nonisolated final class Mic: @unchecked Sendable {
     private var running = false
     private var startedAt: UInt64 = 0
     private var preferredUID: String?
-    private var configObserver: NSObjectProtocol?
 
     init() {
+        sink = AVAudioSinkNode { [capture] _, frames, list in
+            // The real-time thread: no locks, no allocation, no Objective-C.
+            let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: list))
+            let count = Int(frames)
+            var squares: Float = 0
+            var loudest: Float = 0
+            capture.ring.write(count) { i in
+                var sum: Float = 0
+                var channels = 0
+                for buffer in buffers {
+                    guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
+                    let stride = Int(buffer.mNumberChannels)
+                    for channel in 0..<stride { sum += data[i * stride + channel] }
+                    channels += stride
+                }
+                let sample = channels > 0 ? sum / Float(channels) : 0
+                squares += sample * sample
+                loudest = max(loudest, abs(sample))
+                return sample
+            }
+            capture.level.store(count > 0 ? (squares / Float(count)).squareRoot().bitPattern : 0, ordering: .relaxed)
+            if loudest > Float(bitPattern: capture.peak.load(ordering: .relaxed)) { capture.peak.store(loudest.bitPattern, ordering: .relaxed) }
+            if capture.firstSample.load(ordering: .relaxed) == 0 { capture.firstSample.store(mach_absolute_time(), ordering: .relaxed) }
+            return noErr
+        }
+        engine.attach(sink)
         // Follow the default input and plugged devices; a running dictation keeps its device.
         for selector in [kAudioHardwarePropertyDefaultInputDevice, kAudioHardwarePropertyDevices] {
             var address = Devices.address(selector)
             AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue) { [weak self] _, _ in
                 guard let self, !self.running else { return }
                 self.rebuild()
+            }
+        }
+        _ = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
+            guard let self else { return }
+            self.queue.async {
+                self.log.notice("audio configuration changed")
+                // Selecting a device posts a change too: rebuilding for that one would never end.
+                // A running dictation checks its engine on each tick.
+                if !self.running, !self.wired { self.rebuild() }
             }
         }
     }
@@ -93,93 +132,71 @@ nonisolated final class Mic: @unchecked Sendable {
 
     private func rebuild() {
         dispatchPrecondition(condition: .onQueue(queue))
-        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
-        engine?.stop()
-        engine = nil
+        engine.stop()
+        engine.disconnectNodeInput(sink)
+        device = nil
         // Touching the input before the user said yes would raise the system prompt out of context.
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
         guard let device = Devices.resolve(uid: preferredUID) else {
             log.error("no input device")
             return
         }
-        let engine = AVAudioEngine()
         let input = engine.inputNode
-        var id = device.id
-        // Selecting a device reconfigures the engine: only when it isn't the default already.
-        if device.id != Devices.defaultInput, let unit = input.audioUnit {
+        // Selecting a device reconfigures the engine: only when it isn't selected already.
+        if let unit = input.audioUnit, Self.currentDevice(unit) != device.id {
+            var id = device.id
             let status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, UInt32(MemoryLayout<AudioDeviceID>.size))
             if status != noErr { log.error("can't select \(device.name, privacy: .public): \(status)") }
         }
-        let format = input.outputFormat(forBus: 0)
+        // The hardware's format: the input's output format still has the previous device's.
+        let format = input.inputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0,
               let mono = AVAudioFormat(standardFormatWithSampleRate: format.sampleRate, channels: 1) else {
             log.error("\(device.name, privacy: .public) has no usable format")
             return
         }
-        let sink = AVAudioSinkNode { [capture] _, frames, list in
-            // The real-time thread: no locks, no allocation, no Objective-C.
-            let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: list))
-            let count = Int(frames)
-            var squares: Float = 0
-            var loudest: Float = 0
-            capture.ring.write(count) { i in
-                var sum: Float = 0
-                var channels = 0
-                for buffer in buffers {
-                    guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
-                    let stride = Int(buffer.mNumberChannels)
-                    for channel in 0..<stride { sum += data[i * stride + channel] }
-                    channels += stride
-                }
-                let sample = channels > 0 ? sum / Float(channels) : 0
-                squares += sample * sample
-                loudest = max(loudest, abs(sample))
-                return sample
-            }
-            capture.level.store(count > 0 ? (squares / Float(count)).squareRoot().bitPattern : 0, ordering: .relaxed)
-            if loudest > Float(bitPattern: capture.peak.load(ordering: .relaxed)) { capture.peak.store(loudest.bitPattern, ordering: .relaxed) }
-            if capture.firstSample.load(ordering: .relaxed) == 0 { capture.firstSample.store(mach_absolute_time(), ordering: .relaxed) }
-            return noErr
+        do {
+            try engine.tonyConnect(input, to: sink, format: format)
+        } catch {
+            // The format changed since it was read: its configuration change, or the next key down, rebuilds.
+            log.error("can't connect \(device.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return
         }
-        engine.attach(sink)
-        engine.connect(input, to: sink, format: format)
         engine.prepare()
-        configObserver = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
-            guard let self else { return }
-            self.queue.async {
-                self.log.notice("audio configuration changed")
-                if self.running {
-                    self.onInterrupted?()
-                } else if Devices.resolve(uid: self.preferredUID)?.id != self.device?.id
-                    || self.engine?.inputNode.inputFormat(forBus: 0).sampleRate != self.deviceFormat?.sampleRate {
-                    // Selecting a device posts a change too: rebuilding for that one would never end.
-                    self.rebuild()
-                }
-            }
-        }
-        self.engine = engine
         self.device = device
         deviceFormat = mono
         converter = AVAudioConverter(from: mono, to: Self.format)
         log.info("prepared \(device.name, privacy: .public) at \(format.sampleRate) Hz, \(format.channelCount) ch")
     }
 
+    /// The engine is wired to the device to use, at the format that device has now.
+    private var wired: Bool {
+        device != nil && Devices.resolve(uid: preferredUID)?.id == device?.id
+            && engine.inputNode.inputFormat(forBus: 0).sampleRate == deviceFormat?.sampleRate
+    }
+
+    private static func currentDevice(_ unit: AudioUnit) -> AudioDeviceID? {
+        var id: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        return AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, &size) == noErr ? id : nil
+    }
+
     private func startOnQueue(onSamples: @escaping @Sendable ([Float]) -> Void) throws {
-        if engine == nil { rebuild() }
-        guard engine != nil else { throw Failure.noDevice }
+        if device == nil { rebuild() }
+        guard device != nil else { throw Failure.noDevice }
         capture.ring.reset()
         capture.peak.store(0, ordering: .relaxed)
         capture.firstSample.store(0, ordering: .relaxed)
         converter?.reset()
         self.onSamples = onSamples
         do {
-            try engine?.start()
+            try engine.start()
         } catch {
             // The device changed under the prepared engine: build it again once.
             log.error("start failed, rebuilding: \(error.localizedDescription, privacy: .public)")
             rebuild()
             do {
-                guard let engine else { throw Failure.noDevice }
+                guard device != nil else { throw Failure.noDevice }
                 try engine.start()
             } catch {
                 self.onSamples = nil
@@ -189,14 +206,14 @@ nonisolated final class Mic: @unchecked Sendable {
         running = true
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + .milliseconds(20), repeating: .milliseconds(20), leeway: .milliseconds(5))
-        timer.setEventHandler { [weak self] in self?.drain(end: false) }
+        timer.setEventHandler { [weak self] in self?.tick() }
         timer.resume()
         self.timer = timer
     }
 
     private func stopOnQueue() -> Summary {
         guard running else { return Summary(silent: false, device: device) }
-        engine?.stop()
+        engine.stop()
         running = false
         timer?.cancel()
         timer = nil
@@ -214,14 +231,20 @@ nonisolated final class Mic: @unchecked Sendable {
         // Prepared for the next key down, after the summary is out: key up must not wait for it.
         queue.async { [self] in
             guard !running else { return }
-            if let engine, Devices.resolve(uid: preferredUID)?.id == device?.id,
-               engine.inputNode.inputFormat(forBus: 0).sampleRate == deviceFormat?.sampleRate {
-                engine.prepare()
-            } else {
-                rebuild()  // the device changed meanwhile
-            }
+            if wired { engine.prepare() } else { rebuild() }  // the device changed meanwhile
         }
         return summary
+    }
+
+    /// Every 20 ms of a dictation.
+    private func tick() {
+        // A configuration change stops the engine, even one that leaves the device as it was: the one a
+        // selection posts can land after the dictation began. The device went away or changed: end it.
+        if !engine.isRunning, !(wired && (try? engine.start()) != nil) {
+            timer?.cancel()
+            onInterrupted?()
+        }
+        drain(end: false)
     }
 
     private func drain(end: Bool) {

@@ -15,10 +15,13 @@ let package = Package(
             dependencies: [
                 .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "Sparkle", package: "Sparkle"),
+                "TonyObjC",
             ],
             swiftSettings: [.defaultIsolation(MainActor.self)],
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
+        // What Swift can't do: catch an Objective-C exception.
+        .target(name: "TonyObjC"),
         .testTarget(name: "TonyTests", dependencies: ["Tony"], swiftSettings: [.defaultIsolation(MainActor.self)]),
     ]
 )
