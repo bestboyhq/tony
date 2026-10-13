@@ -47,6 +47,10 @@ const contents = join(app, 'Contents')
 for (const dir of ['MacOS', 'Frameworks', 'Resources']) mkdirSync(join(contents, dir), { recursive: true })
 cpSync(join(products, 'Tony'), join(contents, 'MacOS', o.name))
 run('ditto', [join(products, 'Sparkle.framework'), join(contents, 'Frameworks', 'Sparkle.framework')])
+// Sparkle's update window says "Install and Relaunch". Tony is English only, so Sparkle is too, and an English table renames it.
+const english = join(contents, 'Frameworks/Sparkle.framework/Versions/B/Resources/en.lproj')
+mkdirSync(english)
+writeFileSync(join(english, 'Sparkle.strings'), `"Install and Relaunch" = "Relaunch ${o.name}";\n`)
 // The icon, from its one source: the Icon Composer file, compiled the way Xcode does (Assets.car, plus Tony.icns before macOS 26).
 sh('xcrun', ['actool', join(root, 'build/Tony.icon'), '--compile', join(contents, 'Resources'), '--output-partial-info-plist', join(mkdtempSync(join(tmpdir(), 'tony-')), 'icon.plist'),
   '--app-icon', 'Tony', '--enable-on-demand-resources', 'NO', '--development-region', 'en', '--target-device', 'mac', '--minimum-deployment-target', '15.0', '--platform', 'macosx'])
