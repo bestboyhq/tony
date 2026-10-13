@@ -1,14 +1,15 @@
 import Foundation
 
 /// Turns hotkey events into dictation actions: hold to talk, a double tap locks hands-free mode,
-/// a chord or Esc cancels, and a tap too short to hold a word inserts nothing.
+/// Esc or a chord too quick to follow a word cancels, and a tap too short to hold a word inserts nothing.
+/// Any later key goes to the app while Tony keeps listening: a stray key never costs the user their words.
 nonisolated struct HotkeyMachine: Equatable, Sendable {
     enum Input: Equatable, Sendable {
         /// The hotkey went down; `othersHeld` when another modifier was already down (a chord, not ours).
         case down(TimeInterval, othersHeld: Bool)
         case up(TimeInterval)
         /// A key typed or another modifier pressed while the hotkey is held or Tony listens.
-        case otherKey
+        case otherKey(TimeInterval)
         case escape
         /// The double-tap window may have run out.
         case tick(TimeInterval)
@@ -59,7 +60,10 @@ nonisolated struct HotkeyMachine: Equatable, Sendable {
         case (.held, .down):  // the release got lost (the tap was off): end what is running
             state = .ending
             return .stop
-        case (.held, .otherKey), (.held, .escape), (.locking, .escape):
+        case let (.held(since), .otherKey(t)) where t - since < Self.minHold:  // a shortcut (⌥←, ⌘C), before a word
+            state = .ending
+            return .cancel
+        case (.held, .escape), (.locking, .escape):
             state = .ending
             return .cancel
         case (.tapped, .down):

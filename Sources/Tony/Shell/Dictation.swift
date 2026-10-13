@@ -56,6 +56,8 @@ final class Dictation {
     @ObservationIgnored private var feed: AsyncStream<[Float]>.Continuation?
     @ObservationIgnored private var feeder: Task<Void, Never>?
     @ObservationIgnored private var cursor: Task<String?, Never>?
+    /// What the mic heard, once it closed: an Esc after key up keeps it.
+    @ObservationIgnored private var heard: Task<(summary: Mic.Summary, raw: String), Never>?
     @ObservationIgnored private var finishing: Task<Void, Never>?
     @ObservationIgnored private var dismiss: Task<Void, Never>?
     /// Text of an earlier dictation that couldn't land while a newer one listened: it lands with the newer one.
@@ -77,7 +79,7 @@ final class Dictation {
 
     func handle(_ input: HotkeyMachine.Input) {
         if input == .escape, phase == .transcribing {
-            cancel()
+            cancel(keeping: true)
             return
         }
         let action = machine.handle(input)
@@ -88,7 +90,7 @@ final class Dictation {
             handsFree = true
             announce("Hands-free. Press \(Prefs.hotkey.name) to finish.")
         case .stop: stop()
-        case .cancel: cancel()
+        case .cancel: cancel(keeping: input == .escape)
         case nil: break
         }
         if case .tapped = machine.state {
@@ -152,18 +154,16 @@ final class Dictation {
     }
 
     private func stop() {
-        guard phase == .listening, let session else { return }
+        guard phase == .listening, session != nil else { return }
         let generation = generation
         let keyUp = ContinuousClock.now
         let spoken = keyDown.duration(to: keyUp)
         phase = .transcribing
-        let stopped = mic.stop()
-        let (feed, feeder, cursor) = (feed, feeder, cursor)
+        let heard = hear()
+        self.heard = heard
+        let cursor = cursor
         finishing = Task {
-            let summary = await stopped.value
-            feed?.finish()
-            await feeder?.value
-            let raw = await session.finish()
+            let (summary, raw) = await heard.value
             let text = Cleanup.removeFillers(raw)
             let before = await cursor?.value ?? nil
             guard !Task.isCancelled else { return }
@@ -196,11 +196,33 @@ final class Dictation {
         }
     }
 
-    private func cancel() {
+    /// Closes the mic and turns what it heard into text.
+    private func hear() -> Task<(summary: Mic.Summary, raw: String), Never> {
+        let stopped = mic.stop()
+        let (feed, feeder, session) = (feed, feeder, session)
+        return Task {
+            let summary = await stopped.value
+            feed?.finish()
+            await feeder?.value
+            return (summary, await session?.finish() ?? "")
+        }
+    }
+
+    /// Esc is one key away and cancels on purpose or by habit (a vim user, a popup to close): it keeps the
+    /// words as the last dictation in the menu, not typed. A stray tap or a shortcut has none to keep.
+    private func cancel(keeping: Bool = false) {
         guard isBusy else { return }
         generation += 1
         finishing?.cancel()
-        if phase == .listening { _ = mic.stop() }
+        if phase == .listening {
+            if keeping { heard = hear() } else { _ = mic.stop() }
+        }
+        if keeping, let heard {
+            Task {
+                let text = Cleanup.removeFillers(await heard.value.raw)
+                if !text.isEmpty { lastText = text }
+            }
+        }
         end()
         phase = .idle
         announce("Cancelled")
@@ -217,6 +239,7 @@ final class Dictation {
         feed = nil
         feeder = nil
         cursor = nil
+        heard = nil
         finishing = nil
         handsFree = false
     }

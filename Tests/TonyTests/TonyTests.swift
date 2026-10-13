@@ -26,13 +26,18 @@ import Testing
     }
 
     @Test func doubleTapLocksHandsFreeUntilTheNextTap() {
-        #expect(run([.down(0, othersHeld: false), .up(0.1), .down(0.2, othersHeld: false), .up(0.3), .otherKey, .down(5, othersHeld: false), .up(5.1)])
+        #expect(run([.down(0, othersHeld: false), .up(0.1), .down(0.2, othersHeld: false), .up(0.3), .otherKey(1), .down(5, othersHeld: false), .up(5.1)])
             == [.start, .lock, .stop])
     }
 
     @Test func chordCancels() {
         // ⌥← while right ⌥ is the hotkey: a shortcut, not a dictation.
-        #expect(run([.down(0, othersHeld: false), .otherKey, .up(1)]) == [.start, .cancel])
+        #expect(run([.down(0, othersHeld: false), .otherKey(0.1), .up(1)]) == [.start, .cancel])
+    }
+
+    @Test func strayKeyKeepsListening() {
+        // An arrow or ⇧ bumped mid-sentence: the words are worth more than the key.
+        #expect(run([.down(0, othersHeld: false), .otherKey(2), .otherKey(3), .up(5)]) == [.start, .stop])
     }
 
     @Test func escapeCancels() {
