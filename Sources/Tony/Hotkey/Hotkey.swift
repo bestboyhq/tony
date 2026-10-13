@@ -138,7 +138,7 @@ nonisolated final class Hotkey: @unchecked Sendable {
                     keyDown.store(false, ordering: .relaxed)
                     onInput(.up(now))
                 }
-                if HotkeyKey.isModifier(code), isActive { onInput(.otherKey) }
+                if HotkeyKey.isModifier(code), isActive { onInput(.otherKey(now)) }
             }
         case .keyDown:
             guard isActive, event.getIntegerValueField(.eventSourceUserData) != Paste.marker else { break }
@@ -146,7 +146,7 @@ nonisolated final class Hotkey: @unchecked Sendable {
                 onInput(.escape)
                 return nil  // Esc was meant for Tony, not for the app
             }
-            onInput(.otherKey)
+            onInput(.otherKey(ProcessInfo.processInfo.systemUptime))
         default:
             break
         }

@@ -9,10 +9,12 @@ The global key that starts and stops dictation.
 
 - Hold to talk, release to insert.
   A double tap locks hands-free mode until the next tap, and Esc cancels any dictation without inserting.
+  Esc is also pressed by habit (vim, closing a popup), so its words stay in the menu as the last dictation.
 - A tap too short to hold a word is an accident: insert nothing.
 - The hotkey is a modifier on its own (fn, right ⌥, right ⌘), since it types nothing.
   Onboarding asks for it before anything else, with fn preselected: many keyboards not made by Apple have no fn key.
-  Only a modifier pressed and released alone starts dictation; a chord typed while it is held (⌥←, ⌘C) cancels it.
+  Only a modifier pressed and released alone starts dictation; a chord typed in its first 0.3 s (⌥←, ⌘C) cancels it.
+  After that, keys go to the app and Tony keeps listening: an arrow or ⇧ bumped mid-sentence never costs the user their words.
 - The fn (Globe) key also runs the system action set under Keyboard > "Press 🌐 key to": emoji, input source, or Apple Dictation.
   When fn is the hotkey, read `AppleFnUsageType` in `com.apple.HIToolbox` and offer to set it to Do Nothing.
 - Use an active event tap: it needs only Accessibility, which pasting needs anyway, so onboarding asks for two permissions instead of three.
