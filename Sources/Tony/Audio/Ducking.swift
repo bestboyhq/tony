@@ -8,7 +8,7 @@ nonisolated final class Ducking: @unchecked Sendable {
     static let fadeOut = 0.3
     static let fadeIn = 0.6
     private static let tick = 0.01
-    /// `[device UID: volume]` while faded out, so a crash mid-dictation doesn't leave the Mac silent.
+    /// `[device UID: volume]` of each device faded out, so a crash mid-dictation doesn't leave it silent.
     static let savedKey = "ducked"
 
     private let queue = DispatchQueue(label: "com.bestboyhq.tony.ducking", qos: .userInitiated)
@@ -22,7 +22,11 @@ nonisolated final class Ducking: @unchecked Sendable {
     private var timer: DispatchSourceTimer?
 
     init() {
-        queue.async { Self.recover() }
+        queue.async { [self] in recover() }
+        var address = Devices.address(kAudioHardwarePropertyDevices)
+        AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue) { [weak self] _, _ in
+            self?.recover()
+        }
     }
 
     func duck() {
@@ -30,7 +34,7 @@ nonisolated final class Ducking: @unchecked Sendable {
             if device == nil {
                 guard let id = Devices.defaultOutput, let volume = Devices.volume(id), volume > 0 else { return }
                 (device, original, level) = (id, volume, volume)
-                if let uid = Devices.uid(id) { UserDefaults.standard.set([uid: Double(volume)], forKey: Self.savedKey) }
+                if let uid = Devices.uid(id) { Self.saved[uid] = Double(volume) }
             }
             fade(to: 0, over: Self.fadeOut)
         }
@@ -78,17 +82,26 @@ nonisolated final class Ducking: @unchecked Sendable {
         self.timer = timer
     }
 
+    /// A device that went away mid-fade keeps its saved volume: `recover` brings it back with the device.
     private func forget() {
         timer?.cancel()
         timer = nil
+        if let device, let uid = Devices.uid(device) { Self.saved[uid] = nil }
         device = nil
-        UserDefaults.standard.removeObject(forKey: Self.savedKey)
     }
 
-    /// Tony quit while the sound was faded out: bring it back, unless the user already did.
-    private static func recover() {
-        guard let saved = (UserDefaults.standard.dictionary(forKey: savedKey) as? [String: Double])?.first else { return }
-        UserDefaults.standard.removeObject(forKey: savedKey)
-        if let id = Devices.device(uid: saved.key), let now = Devices.volume(id), now <= 0.01 { Devices.setVolume(id, Float32(saved.value)) }
+    private static var saved: [String: Double] {
+        get { UserDefaults.standard.dictionary(forKey: savedKey) as? [String: Double] ?? [:] }
+        set { newValue.isEmpty ? UserDefaults.standard.removeObject(forKey: savedKey) : UserDefaults.standard.set(newValue, forKey: savedKey) }
+    }
+
+    /// Tony quit, crashed, or lost the device while it was faded out: bring the volume back, unless the user
+    /// already did. A device that isn't plugged in gets it when it is: AirPods come back at the volume they left with.
+    private func recover() {
+        for (uid, volume) in Self.saved {
+            guard let id = Devices.device(uid: uid), id != device else { continue }
+            if let now = Devices.volume(id), now <= 0.01 { Devices.setVolume(id, Float32(volume)) }
+            Self.saved[uid] = nil
+        }
     }
 }
