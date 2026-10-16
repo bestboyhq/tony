@@ -21,9 +21,8 @@ Grip solved Developer ID signing, notarization, release automation, and in-app u
 Every domain obeys these invariants:
 
 - **Instant.** Listening starts on key down, so the first word is captured, and the text lands about 100 ms after key up.
-- **Every word survives.** Text that cannot be inserted (a secure field, an app that ignores paste) stays one click away in the HUD and the menu.
+- **Every word survives.** Every dictation stays on the clipboard, so text that cannot be inserted (a secure field, an app that ignores paste) is one ⌘V away, and the menu keeps the last one.
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
-- **The clipboard is the user's.** Paste through it, then restore everything it held, unless the user copied something in between.
 - **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
   No account, no telemetry; the network is only for the one-time model download and update checks.
@@ -70,7 +69,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
   `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
-- `node --test 'scripts/*.test.ts'` tests the release tooling and that `build/Tony.icon` matches `scripts/icon.ts` (Node 24).
+- `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, and that `docs/adr/README.md` lists every ADR (Node 24).
 - Add each new command here in the commit that adds it.
 
 ## Releases and updates
@@ -88,6 +87,11 @@ Ported from Grip, where each piece is proven.
 - An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, installs it, and relaunches as 0.0.2 (`scripts/update-e2e.ts`).
   It signs with a throwaway EdDSA key, so the real one never leaves CI's secrets.
   CI runs it before every release.
+
+## Decisions
+
+`docs/adr/` records why Tony is built the way it is, one architecture decision per file.
+A change that makes or reverses one is done only once its ADR is written with the `adr` skill.
 
 ## Code: lazy senior developer
 

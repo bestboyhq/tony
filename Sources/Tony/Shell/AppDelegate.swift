@@ -105,11 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // A dictation still running lands first, and the user's clipboard comes back before Tony goes.
-        guard dictation.isBusy || Paste.restore != nil else { return .terminateNow }
+        // A dictation still running lands first.
+        guard dictation.isBusy else { return .terminateNow }
         Task {
             await dictation.finishForQuit()
-            await Paste.restore?.value
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
@@ -195,7 +194,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func perform(_ action: Dictation.Action) {
         switch action {
-        case .copy: break
         case .openAccessibility: permissions.requestAccessibility()
         case .openMicrophone: Permissions.openPrivacy("Privacy_Microphone")
         case .openSettings: showSettings()

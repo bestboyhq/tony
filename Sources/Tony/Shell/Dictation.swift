@@ -19,11 +19,10 @@ final class Dictation {
     }
 
     enum Action: Equatable {
-        case copy(String), openAccessibility, openMicrophone, openSettings, retryModel, relaunch
+        case openAccessibility, openMicrophone, openSettings, retryModel, relaunch
 
         var title: String {
             switch self {
-            case .copy: "Copy"
             case .openAccessibility, .openMicrophone: "Open Settings"
             case .openSettings: "Settings"
             case .retryModel: "Try Again"
@@ -173,7 +172,7 @@ final class Dictation {
                 if !text.isEmpty {
                     let fitted = Cleanup.fit(text, after: before, keeping: Prefs.words)
                     lastText = fitted
-                    if !AXIsProcessTrusted() || !Paste.paste(fitted) { carry = [carry, fitted].compactMap { $0 }.joined(separator: " ") }
+                    if !Paste.paste(fitted) { carry = [carry, fitted].compactMap { $0 }.joined(separator: " ") }
                 }
                 return
             }
@@ -228,7 +227,8 @@ final class Dictation {
         announce("Cancelled")
         if let carried = carry {
             carry = nil
-            fail("Tony couldn't type your previous dictation.", .copy(carried))
+            Paste.copy(carried)
+            fail("Tony couldn't type your previous dictation: press ⌘V to paste.")
         }
     }
 
@@ -247,14 +247,15 @@ final class Dictation {
     private func insert(_ text: String) {
         log.info("inserting \(text.count) characters")
         lastText = text
-        guard AXIsProcessTrusted() else {
-            return fail("Tony needs Accessibility access to type.", .openAccessibility)
-        }
-        guard Paste.paste(text) else {
-            return fail(SecureInput.message, .copy(text))
-        }
+        guard Paste.paste(text) else { return pasteFailed() }
         phase = .idle
         announce("Inserted")
+    }
+
+    /// Tony couldn't press ⌘V, so the text waits on the clipboard for the user's own.
+    private func pasteFailed() {
+        if !AXIsProcessTrusted() { return fail("Tony needs Accessibility access: press ⌘V to paste.", .openAccessibility) }
+        fail("\(SecureInput.holder.map { "\($0) has secure input on" } ?? "Secure input is on"): press ⌘V to paste.")
     }
 
     /// Counts a dictation once its text is handed to the app, or kept for the user when it can't be.
@@ -267,7 +268,7 @@ final class Dictation {
     /// Pastes the last dictation again, from the menu.
     func pasteLast() {
         guard let lastText else { return }
-        if !Paste.paste(lastText) { fail(SecureInput.message, .copy(lastText)) }
+        if !Paste.paste(lastText) { pasteFailed() }
     }
 
     /// Quitting mid-dictation inserts it first.
@@ -280,10 +281,6 @@ final class Dictation {
     }
 
     func perform(_ action: Action) {
-        if case let .copy(text) = action {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-        }
         onAction?(action)
         dismissNotice()
     }
