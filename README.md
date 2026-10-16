@@ -32,7 +32,7 @@
 ---
 
 Typing is slow, and most dictation is worse.
-Cloud apps wait on a server, local ones on a heavier model, and many clip your first word, paste a "Thank you." you never said, or wipe your clipboard.
+Cloud apps wait on a server, local ones on a heavier model, and many clip your first word, paste a "Thank you." you never said, or lose your words when the paste fails.
 Tony starts listening the instant your key goes down, transcribes on your Mac's Neural Engine with one of the most accurate open speech models there is, and types the result into whatever app you are in.
 A sentence takes about 50 ms.
 Your voice never leaves the Mac.
@@ -120,17 +120,15 @@ Never what you said.
 
 - **Every app.** Native apps, Safari and Chrome, Slack and VS Code, Terminal: if it takes paste, it takes Tony.
 - **Every layout.** QWERTY, Dvorak, and Cyrillic layouts all paste correctly.
-- **Every word survives.** A password field or an app that refuses paste gets a Copy button in the pill, and your last dictation waits in the panel to paste again.
+- **Every word survives.** Every dictation stays on your clipboard, so when a paste can't land (a password field, no text field, an app that refuses paste), ⌘V brings it back.
+  Your last dictation also waits in the panel to paste again.
 
 <p align="center">
-  <img src=".github/assets/notice.webp" width="600" alt="The pill says 1Password has secure input on, so Tony can't type there, with a Copy button">
+  <img src=".github/assets/notice.webp" width="600" alt="The pill says 1Password has secure input on: press ⌘V to paste">
 </p>
 
 - **Undo is one ⌘Z.** A dictation lands as a single paste.
 - **Shortcuts still work.** Press another key with yours, and Tony steps aside for the shortcut.
-- **Your clipboard stays yours.** Tony pastes through it, then puts back everything it held: text, images, files.
-  Copy something in the meantime and yours wins.
-  Clipboard managers skip dictations.
 
 ## Out of your way
 
@@ -140,7 +138,7 @@ Never what you said.
 - **Your AirPods keep sounding good.** Tony prefers the built-in mic, since opening an AirPods mic drops your music to phone-call quality.
 - **Problems in plain words.** A closed lid, a muted mic, an app holding secure input, or a Tony moved while running gets one plain sentence and, where it helps, a button that fixes it.
 - **Unplug mid-sentence, keep the sentence.** When your mic goes away while you talk, Tony types what it heard.
-- **Quit without losing a word.** Quitting mid-dictation types it first, and puts your clipboard back before Tony goes.
+- **Quit without losing a word.** Quitting mid-dictation types it first.
 
 ## Private
 
@@ -184,7 +182,7 @@ Tony needs macOS 15 or later on Apple silicon.
 ```
 fn down → event tap → other audio fades → AVAudioEngine, 16 kHz → Silero VAD
         → Parakeet Ultra and Parakeet CTC 110M on the Neural Engine
-        → fillers out, fit to the cursor → ⌘V → clipboard restored
+        → fillers out, fit to the cursor → clipboard → ⌘V
 ```
 
 - Native Swift 6 with SwiftUI, and AppKit for the status item, the non-activating pill and panel, and the event tap.

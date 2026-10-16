@@ -266,8 +266,7 @@ private struct Home: View {
                         Text("Last dictation").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Spacer()
                         Button("Copy") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(last, forType: .string)
+                            Paste.copy(last)
                             menuBar.close()
                         }
                         Button("Paste") {
