@@ -8,7 +8,7 @@ struct SettingsView: View {
     let speech: Speech
     let updates: Updates
     @AppStorage(Prefs.micKey) private var mic = ""
-    @AppStorage(Prefs.languageKey) private var language = ""
+    @State private var languages = Prefs.languages
     @State private var devices = Devices.inputs()
     @State private var launchAtLogin = LoginItem.isOn
 
@@ -31,10 +31,15 @@ struct SettingsView: View {
                     Divider()
                     ForEach(devices) { Text($0.name).tag($0.uid) }
                 }
-                Picker("Language", selection: $language) {
-                    Text("Detect automatically").tag("")
-                    Divider()
-                    ForEach(Self.languages, id: \.rawValue) { Text(Self.name($0)).tag($0.rawValue) }
+                LabeledContent("Languages") {
+                    Menu(languageSummary) {
+                        Toggle("Any language", isOn: Binding { languages.isEmpty } set: { if $0 { languages = [] } })
+                        Divider()
+                        ForEach(Self.choices, id: \.rawValue) { language in
+                            Toggle(Self.name(language), isOn: Binding { languages.contains(language) } set: { _ in languages.formSymmetricDifference([language]) })
+                        }
+                    }
+                    .fixedSize()
                 }
             } footer: {
                 Text("Automatic prefers the built-in mic: a Bluetooth headset sounds like a phone call while its mic is open.")
@@ -66,15 +71,25 @@ struct SettingsView: View {
         .scrollDisabled(true)
         .fixedSize(horizontal: false, vertical: true)
         .onChange(of: mic) { dictation.mic.use(uid: mic.isEmpty ? nil : mic) }
-        .onChange(of: language) { dictation.language = Language(rawValue: language) }
+        .onChange(of: languages) {
+            Prefs.languages = languages
+            dictation.languages = languages
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             devices = Devices.inputs()
         }
     }
 
-    private static let languages = Language.allCases.sorted { name($0) < name($1) }
+    private var languageSummary: String {
+        if languages.isEmpty { return "Any language" }
+        return languages.count > 3 ? "\(languages.count) languages" : languages.map(Self.name).sorted().formatted(.list(type: .and).locale(Self.locale))
+    }
+
+    private static let choices = Language.allCases.sorted { name($0) < name($1) }
+    /// Tony's own language, not the region's: an English Mac in Poland would name them in Polish.
+    private static let locale = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
     private static func name(_ language: Language) -> String {
-        Locale.current.localizedString(forLanguageCode: language.rawValue)?.localizedCapitalized ?? language.rawValue
+        locale.localizedString(forLanguageCode: language.rawValue)?.localizedCapitalized ?? language.rawValue
     }
 }
 

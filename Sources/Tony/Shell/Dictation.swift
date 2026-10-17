@@ -45,7 +45,7 @@ final class Dictation {
     @ObservationIgnored let mic = Mic()
     @ObservationIgnored let ducking = Ducking()
     @ObservationIgnored private(set) var hotkey: Hotkey!
-    @ObservationIgnored var language: Language?
+    @ObservationIgnored var languages: Set<Language> = []
     @ObservationIgnored var onPhase: ((Phase) -> Void)?
     @ObservationIgnored var onAction: ((Action) -> Void)?
 
@@ -115,7 +115,7 @@ final class Dictation {
         guard !Permissions.moved else {
             return fail("Tony was moved, so macOS mutes its mic.", Permissions.home == nil ? nil : .relaunch)
         }
-        guard let session = speech.session(language: language) else {
+        guard let session = speech.session(languages: languages) else {
             switch speech.state {
             case let .downloading(progress): return fail("Tony is downloading its speech model (\(Int(progress * 100))%).")
             case let .failed(message): return fail(message, .retryModel)

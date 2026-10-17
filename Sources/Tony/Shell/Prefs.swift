@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import FluidAudio
 import Foundation
 
@@ -5,7 +6,7 @@ import Foundation
 enum Prefs {
     static let hotkeyKey = "hotkey"
     static let micKey = "mic"
-    static let languageKey = "language"
+    static let languagesKey = "languages"
     static let onboardedKey = "onboarded"
     static let wordsKey = "words"
 
@@ -19,9 +20,27 @@ enum Prefs {
         UserDefaults.standard.string(forKey: micKey).flatMap { $0.isEmpty ? nil : $0 }
     }
 
-    /// The spoken language as a hint for the model; nil detects it.
-    static var language: Language? {
-        UserDefaults.standard.string(forKey: languageKey).flatMap(Language.init(rawValue:))
+    /// The languages the user speaks, empty for any. Until the user picks, the ones the Mac is set up for.
+    static var languages: Set<Language> {
+        get {
+            let defaults = UserDefaults.standard
+            // Before Tony took several languages it took one, and "" took any.
+            guard let codes = defaults.stringArray(forKey: languagesKey) ?? defaults.string(forKey: "language").map({ [$0] }) else { return systemLanguages }
+            return Set(codes.compactMap(Language.init(rawValue:)))
+        }
+        set { UserDefaults.standard.set(newValue.map(\.rawValue).sorted(), forKey: languagesKey) }
+    }
+
+    /// The languages in the Mac's language list and keyboards that Parakeet speaks.
+    static var systemLanguages: Set<Language> {
+        let filter = [kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as String, kTISPropertyInputSourceIsEnabled as String: true] as CFDictionary
+        let keyboards = TISCreateInputSourceList(filter, false)?.takeRetainedValue() as? [TISInputSource] ?? []
+        // A keyboard lists every language it can type: the first is the one it is for.
+        let typed = keyboards.compactMap { keyboard in
+            TISGetInputSourceProperty(keyboard, kTISPropertyInputSourceLanguages).flatMap { (Unmanaged<CFArray>.fromOpaque($0).takeUnretainedValue() as? [String])?.first }
+        }
+        let spoken = Locale.preferredLanguages.compactMap { Locale(identifier: $0).language.languageCode?.identifier }
+        return Set((spoken + typed).compactMap(Language.init(rawValue:)))
     }
 
     /// Names, brands, and jargon the user wants spelled their way.
