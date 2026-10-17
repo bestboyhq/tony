@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let speech = Speech()
         await speech.prepare()
         await speech.learn(Prefs.words)
-        guard let session = speech.session(language: Prefs.language) else {
+        guard let session = speech.session(languages: Prefs.languages) else {
             print("speech not ready: \(speech.state)")
             return 1
         }
@@ -55,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         dictation.hotkey.setKey(Prefs.hotkey)
         dictation.mic.use(uid: Prefs.micUID)
-        dictation.language = Prefs.language
+        dictation.languages = Prefs.languages
         dictation.onAction = { [weak self] in self?.perform($0) }
         hud = HUD(dictation: dictation, mic: dictation.mic)
         menuBar = MenuBar(app: self)

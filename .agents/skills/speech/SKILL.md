@@ -19,6 +19,9 @@ Speech to text on the Neural Engine.
   Speech models invent text ("Thank you.") from silence and noise.
 - Long dictation transcribes in the background while the user still speaks, in overlapping chunks stitched at a pause, so key up stays fast after five minutes of talk.
   Grip learned this: Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+- Parakeet picks its language per clip by itself, and short clips can come out in the wrong alphabet (Polish "Tak." as "Так.").
+  The user's languages, by default the Mac's languages and the first language of each keyboard, keep it to their alphabet through FluidAudio's language hint (`Speech.hint`).
+  The hint only filters by alphabet (and keeps English out of French alone): it can't tell Polish from Czech, and languages in two alphabets leave Parakeet free.
 - Parakeet hears one language per clip, and reports none.
   When the user switches language mid-dictation, it garbles one language or drops it ("Can you send me the report, do końca dnia" came out Polish only).
   Where part of a clip comes out unsure or wordless, each run is transcribed on its own (`Segments.languages`), and kept only if Parakeet is sure of it.
