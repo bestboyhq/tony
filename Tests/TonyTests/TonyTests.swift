@@ -3,6 +3,7 @@ import Carbon
 import FluidAudio
 import Synchronization
 import Testing
+import os
 @testable import Tony
 
 @Suite struct HotkeyMachineTests {
@@ -200,34 +201,59 @@ import Testing
     }
 }
 
-/// Fades the Mac's real output for about three seconds; skipped where software can't set its volume.
+/// Fades the Mac's real output for about four seconds; skipped where software can't set its volume.
+/// Now Playing is a recorder, so the user's music never pauses.
 @Suite(.serialized) struct DuckingTests {
     @Test(.enabled(if: (Devices.defaultOutput.flatMap(Devices.volume) ?? 0) > 0))
     func fadesOutAndBackToTheUsersVolume() async throws {
         let id = try #require(Devices.defaultOutput)
         let volume = try #require(Devices.volume(id))
         defer { Devices.setVolume(id, volume) }
-        let ducking = Ducking()
-        /// Waits for the volume to get there, as long as a loaded CI machine needs.
-        func reaches(_ expected: Float32?, sourceLocation: SourceLocation = #_sourceLocation) async throws {
+        let playing = Atomic(true)
+        let commands = OSAllocatedUnfairLock(initialState: [String]())
+        let ducking = Ducking { command in
+            commands.withLock { $0.append(command) }
+            return command == "pause" && playing.load(ordering: .relaxed)
+        }
+        /// Waits for it to hold, as long as a loaded CI machine needs.
+        func until(_ holds: () -> Bool) async throws {
             let deadline = ContinuousClock.now + .seconds(5)
-            while Devices.volume(id) != expected, .now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+            while !holds(), .now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        }
+        func reaches(_ expected: Float32?, sourceLocation: SourceLocation = #_sourceLocation) async throws {
+            try await until { Devices.volume(id) == expected }
             #expect(Devices.volume(id) == expected, sourceLocation: sourceLocation)
         }
+        func sent(_ expected: [String], sourceLocation: SourceLocation = #_sourceLocation) async throws {
+            try await until { commands.withLock { $0 } == expected }
+            #expect(commands.withLock { $0 } == expected, sourceLocation: sourceLocation)
+        }
 
+        // Let go before the sound is out: nothing paused.
         ducking.duck()
-        try await reaches(0)
         ducking.restore()
         try await reaches(volume)
+        try await sent([])
 
-        // Turned up while Tony listened: the user's volume stays.
+        // Music plays: paused once the sound is out, played again after.
         ducking.duck()
         try await reaches(0)
+        try await sent(["pause"])
+        ducking.restore()
+        try await reaches(volume)
+        try await sent(["pause", "play"])
+
+        // Turned up while Tony listened: the user's volume stays. Nothing played, so nothing plays after.
+        playing.store(false, ordering: .relaxed)
+        ducking.duck()
+        try await reaches(0)
+        try await sent(["pause", "play", "pause"])
         Devices.setVolume(id, volume / 2)
         let turnedUp = Devices.volume(id)
         ducking.restore()
         try await Task.sleep(for: .seconds(Ducking.fadeIn + 0.2))
         #expect(Devices.volume(id) == turnedUp)
+        #expect(commands.withLock { $0 } == ["pause", "play", "pause"])
 
         // Tony quit while faded out: the next launch brings the sound back.
         ducking.duck()

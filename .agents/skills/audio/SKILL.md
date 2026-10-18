@@ -15,6 +15,9 @@ Microphone capture, from key down to the samples the model hears.
 - Keep voice processing (`setVoiceProcessingEnabled`) off: it processes what the model hears and ducks other audio its own way.
 - Other audio fades out while Tony listens and back in after (`Ducking`): it ramps the default output's volume, so it covers every app and needs no permission.
   A volume the user changes meanwhile stays theirs, and a quit or crash mid-dictation never leaves the Mac silent, even on AirPods that come back after Tony relaunched.
+- Once the sound is out, what plays in Now Playing (a song, a video) pauses, and plays again after, so the user misses none of it (ADR 0008).
+  Only what plays pauses, and only what Tony paused plays again, so music the user had off never starts.
+  MediaRemote obeys only Apple's processes since macOS 15.4, so `osascript` sends the commands; the command is sent without waiting, so the script waits for it to land.
 - Leave the system input volume where the user set it.
 - Convert once to what the model wants, 16 kHz mono Float32, with `AVAudioConverter`, whatever the device delivers (44.1 or 48 kHz, stereo, 24-bit).
 - Keep one `AVAudioEngine` for the app's life and rewire it on each device change, connecting with the input's hardware format (`inputFormat(forBus: 0)`) through `tonyConnect`.
@@ -25,4 +28,4 @@ Microphone capture, from key down to the samples the model hears.
 - Detect a built-in mic muted by a closed lid, a missing device, and a mic that delivers only silence, and say so once in the HUD.
 - The audio thread is real-time safe: it hands the level to the HUD and the samples to speech through lock-free buffers.
 
-Done when the first syllable after key down is transcribed on built-in, USB, and AirPods mics, and other apps' audio fades out while Tony listens and comes back at the user's volume, at full quality unless the user picked a Bluetooth mic.
+Done when the first syllable after key down is transcribed on built-in, USB, and AirPods mics, other apps' audio fades out while Tony listens and comes back at the user's volume, and a song in Spotify or Music and a video in Safari or Chrome pause and play on from the same spot, at full quality unless the user picked a Bluetooth mic.
