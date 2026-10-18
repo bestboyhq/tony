@@ -12,3 +12,4 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0005](0005-releases-from-conventional-commits-and-sparkle-updates.md) | Conventional Commit titles pick the version; CI signs, notarizes, publishes; Sparkle updates           |
 | [0006](0006-paste-through-the-clipboard-then-restore-it.md)            | Superseded by 0007: paste through the clipboard, then restore it                                       |
 | [0007](0007-the-dictation-stays-on-the-clipboard.md)                   | Paste through the clipboard and leave the dictation there, so a failed paste is one ⌘V away            |
+| [0008](0008-pause-now-playing-through-osascript.md)                    | Fade other audio out, then pause Now Playing through MediaRemote in `osascript`; play what it paused   |

@@ -132,7 +132,8 @@ Never what you said.
 
 ## Out of your way
 
-- **Your music hushes while you talk.** Other audio fades out the moment you press the key and back in after you let go, so neither you nor the mic hears it.
+- **Your music waits while you talk.** Other audio fades out the moment you press the key and back in after you let go, so neither you nor the mic hears it.
+  The song or video playing pauses once it's quiet and plays on from the same spot, so you miss none of it, and music you had off stays off.
   Turn the volume up mid-dictation and Tony leaves it there.
   Even if Tony crashes mid-dictation, your volume comes back the next time it opens.
 - **Your AirPods keep sounding good.** Tony prefers the built-in mic, since opening an AirPods mic drops your music to phone-call quality.
@@ -180,7 +181,7 @@ Tony needs macOS 15 or later on Apple silicon.
 ## Under the hood
 
 ```
-fn down → event tap → other audio fades → AVAudioEngine, 16 kHz → Silero VAD
+fn down → event tap → other audio fades, media pauses → AVAudioEngine, 16 kHz → Silero VAD
         → Parakeet Ultra and Parakeet CTC 110M on the Neural Engine
         → fillers out, fit to the cursor → clipboard → ⌘V
 ```
