@@ -84,9 +84,9 @@ Ported from Grip, where each piece is proven.
 - Sparkle reads `https://github.com/bestboyhq/tony/releases/latest/download/appcast.xml`, so the repo must be public before the first release.
 - Secrets: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` (the same values as Grip), and `SPARKLE_PRIVATE_KEY`, whose public half is `SUPublicEDKey` in `Info.plist`.
   Team ID `59F3NS99CS`, bundle id `com.bestboyhq.tony`.
-- An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, installs it, and relaunches as 0.0.2 (`scripts/update-e2e.ts`).
+- An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, 0.0.3 ships before the user clicks Restart to Update, and it relaunches as 0.0.3, the latest, never a release in between (`scripts/update-e2e.ts`).
   It signs with a throwaway EdDSA key, so the real one never leaves CI's secrets.
-  CI runs it before every release.
+  CI runs it on every PR and before every release.
 
 ## Decisions
 
