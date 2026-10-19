@@ -4,13 +4,22 @@ import Foundation
 
 /// The user's words: names, brands, and jargon Parakeet doesn't know. Parakeet can't bias its own
 /// decoding, so a second, small model (Parakeet CTC 110M) listens to the same audio, and one of the
-/// user's words replaces what Parakeet wrote only where it is spelled alike and the audio fits it better.
+/// user's words replaces what Parakeet wrote only where Parakeet was unsure of it, it is spelled alike,
+/// and the audio fits it better.
 nonisolated struct Words: Sendable {
     /// How much the audio may favor what Parakeet wrote and the user's word still win. FluidAudio tunes
     /// 4.5 for recall; at that, "Monday" became "Moondream". A wrong swap costs more trust than a miss.
     static let boost: Float = 3.0
+    /// Below this confidence in a token, Parakeet was unsure of the word. It is sure of the words it knows,
+    /// 0.99 and up, even where the word model prefers the user's word ("group" for Grip, "Szymon" for Szymeo),
+    /// and unsure of the names it doesn't know (0.39 to 0.87: "Zimeo" for Szymeo, "Superbase" for Supabase).
+    static let sure: Float = 0.9
+    /// The word model's token for a letter it can't spell. It knows English letters only, so it scores a word
+    /// with others ("grypę", "połyk") as noise, and "Mam grypę" became "Mam Grip".
+    static let unknown = 0
 
     private let models: CtcModels
+    private let tokenizer: CtcTokenizer
     private let vocabulary: CustomVocabularyContext
     private let rescorer: VocabularyRescorer
     private let minSimilarity: Float
@@ -24,9 +33,10 @@ nonisolated struct Words: Sendable {
         let tokenizer = try await CtcTokenizer.load(from: directory)
         vocabulary = CustomVocabularyContext(terms: words.compactMap { word in
             let ids = tokenizer.encode(word)
-            return ids.isEmpty ? nil : CustomVocabularyTerm(text: word, ctcTokenIds: ids)
+            return ids.isEmpty || ids.contains(Self.unknown) ? nil : CustomVocabularyTerm(text: word, ctcTokenIds: ids)
         })
         self.models = models
+        self.tokenizer = tokenizer
         let spotter = CtcKeywordSpotter(models: models, blankId: models.vocabulary.count)
         // No acoustic rescue: it swaps in words spelled nothing alike ("rolled it back" became Wojtek).
         rescorer = try await VocabularyRescorer.create(
@@ -113,6 +123,8 @@ nonisolated struct Words: Sendable {
         let bytes = Array(result.text.utf8)
         let swaps = evidence.candidates.compactMap { candidate -> (Range<Int>, String)? in
             guard candidate.legacyOutcome == .applied, let range = candidate.baseTextUTF8Range, range.upperBound <= bytes.count,
+                  let tokens = candidate.tokenRange, tokens.upperBound <= timings.count, timings[tokens].contains(where: { $0.confidence < Self.sure }),
+                  !tokenizer.encode(candidate.basePhrase).contains(Self.unknown),
                   !Self.inflects(String(decoding: bytes[range], as: UTF8.self), candidate.canonicalTerm) else { return nil }
             return (range, candidate.canonicalTerm)
         }

@@ -28,9 +28,11 @@ Speech to text on the Neural Engine.
   Check changes with mixed clips: `say -v Samantha` for English and `say -v Zosia` for Polish, joined with ffmpeg.
 - Filler words (um, uh, and each language's equivalents) come out by default.
 - The user's words (names, brands, jargon) get their spelling where Parakeet mishears them.
-  Parakeet can't bias its decoding, so a second model, Parakeet CTC 110M (~100 MB, downloaded once there are words), hears the same audio alongside it, and a word replaces Parakeet's text only where it is spelled alike and the audio fits it better.
+  Parakeet can't bias its decoding, so a second model, Parakeet CTC 110M (~100 MB, downloaded once there are words), hears the same audio alongside it, and a word replaces Parakeet's text only where Parakeet was unsure of it, it is spelled alike, and the audio fits it better.
   A wrong swap costs more trust than a miss: keep FluidAudio's acoustic rescue off (it swapped "rolled it back" for Wojtek), keep the boost low, and leave an inflected form standing ("na Mokotowie" is Mokotów in Polish).
+  The word model's opinion alone over-fires: its score is an average per token, so a boost of 3 lets a word win that is 20 times less likely in every token, and it hears English only ("group" became Grip, "Szymon" Szymeo, "Malina" Malini).
+  So only a word Parakeet was unsure of can change (`Words.sure`): it is sure of the words it knows and unsure of the names it doesn't, and a word with letters the word model can't spell ("grypę") is never judged.
   FluidAudio's own CTC path leaves the model input uninitialized, and NaNs there make the model deaf, and it copies values through NSNumber (90 ms a call), so `Words` runs the two Core ML models itself.
-  Check changes with `Tony --transcribe <file> -words '(Szymon, Supabase)'` on sentences with the words and without them.
+  Check changes with `Tony --transcribe <file> -words '(Szymon, Supabase)'` on sentences with the words and without them, in English and Polish, with words spelled close to them ("group" for Grip, "Szymon" for Szymeo).
 
 Done when a sentence in any supported language lands correct, punctuated, and instant, and silence or a cough inserts nothing.
