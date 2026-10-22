@@ -101,6 +101,7 @@ Ported from Grip, where each piece is proven.
 - Every fact on the site comes from the README or the code, and the site names no competing product; speech models like Whisper and Parakeet are fine.
 - Each docs page has its own title, description, and H1, and links to the pages around it.
 - A pull request that changes only the site is titled `docs:`, so it ships no app release.
+- Every merge to `main` deploys the site, `docs:` ones included: the `site` job in `.github/workflows/ci.yml` runs `npx wrangler@4 deploy` with the `CLOUDFLARE_API_TOKEN` secret (the same value as Malini's).
 
 ## Decisions
 
