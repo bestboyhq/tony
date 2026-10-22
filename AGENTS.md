@@ -61,6 +61,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - `Sources/Tony/<Domain>/`: one folder per domain skill: `Hotkey`, `Audio`, `Speech`, `Insert`, `HUD`, `Shell`.
 - `build/`: `Tony.icon`, `Info.plist`, entitlements.
 - `scripts/`: build and release tooling.
+- `site/`: the website at [bestboy.dev/tony](https://bestboy.dev/tony), a prerendered SvelteKit site with its docs as markdown in `site/content/`, served by a Cloudflare Worker (`site/worker/`) on the route `bestboy.dev/tony*` (ADR 0009).
 
 ## Commands
 
@@ -70,6 +71,8 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, and that `docs/adr/README.md` lists every ADR (Node 24).
+- In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.
+  `npx wrangler@4 dev` serves the built site through the Worker, as on bestboy.dev.
 - Add each new command here in the commit that adds it.
 
 ## Releases and updates
@@ -87,6 +90,17 @@ Ported from Grip, where each piece is proven.
 - An update end-to-end test proves a signed build updates itself: 0.0.1 finds 0.0.2 on a local appcast, 0.0.3 ships before the user clicks Restart to Update, and it relaunches as 0.0.3, the latest, never a release in between (`scripts/update-e2e.ts`).
   It signs with a throwaway EdDSA key, so the real one never leaves CI's secrets.
   CI runs it on every PR and before every release.
+
+## Website
+
+`site/` leads with talking to AI agents (Claude Code, Codex, any chat box), Tony's edge, and ranks it for free, private, offline dictation for Mac.
+
+- The site looks like bestboy.dev and Malini's site: it follows Bestboy's design (`docs/design.md` in `bestboyhq/platform`), whose tokens, bar, footer, and components it copies from Malini's `apps/site` (ADR 0009).
+  A change to the look lands in `docs/design.md` first.
+- A user-visible feature change updates `site/content` in the same pull request, and the home page (`site/src/routes/+page.svelte`) where it names the feature.
+- Every fact on the site comes from the README or the code, and the site names no competing product; speech models like Whisper and Parakeet are fine.
+- Each docs page has its own title, description, and H1, and links to the pages around it.
+- A pull request that changes only the site is titled `docs:`, so it ships no app release.
 
 ## Decisions
 
