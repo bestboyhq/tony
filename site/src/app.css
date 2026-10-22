@@ -227,10 +227,18 @@
 	height: 9px;
 	margin-left: -50vw;
 	background:
-		var(--seam, linear-gradient(transparent 0 0)) calc(50vw - var(--col) / 2) 4px / var(--col) 1px,
+		var(--seam, linear-gradient(transparent 0 0)) calc(50vw - var(--col) * var(--seam-w) / 2) 4px /
+			calc(var(--col) * var(--seam-w)) 1px,
 		var(--crosses);
 	background-repeat: no-repeat;
 	pointer-events: none;
+}
+
+/* The seam's share of the column, so it can draw out from the middle. */
+@property --seam-w {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 1;
 }
 
 @property --rail-l {
@@ -264,9 +272,7 @@
 }
 
 [data-reveal='go'] {
-	--blur: 6px;
-	--duration: 500ms;
-	--delay: calc(var(--i) * 80ms);
+	--delay: calc(var(--i) * 120ms);
 }
 
 @media (prefers-reduced-motion: no-preference) {
