@@ -1,0 +1,3 @@
+# A version has to have survived in the registry for 48 hours before pnpm resolves to it,
+# so a pulled or compromised release never lands here (as in Malini).
+minimumReleaseAge: 2880

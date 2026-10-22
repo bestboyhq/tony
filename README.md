@@ -15,6 +15,10 @@
 </p>
 
 <p align="center">
+  <a href="https://bestboy.dev/tony">bestboy.dev/tony</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://bestboy.dev/tony/docs">Docs</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/bestboyhq/tony/releases/latest"><img src="https://img.shields.io/github/v/release/bestboyhq/tony?label=release&color=5e5ce6" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-1c1c1e?logo=apple" alt="macOS 15 or later">
   <img src="https://img.shields.io/badge/Apple_silicon-Neural_Engine-1c1c1e" alt="Runs on the Apple silicon Neural Engine">
