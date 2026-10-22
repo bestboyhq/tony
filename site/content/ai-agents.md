@@ -56,7 +56,7 @@ See [Privacy and offline use](/tony/docs/privacy.md).
 
 Tony is a Bestboy app, like its siblings:
 
-- **[Grip](https://github.com/bestboyhq/grip)**, the free and open source screen recorder, shows what you mean.
+- **[Grip](https://bestboy.dev/grip)**, the free and open source screen recorder, shows what you mean.
 - **Tony** says it.
 - **[Malini](https://bestboy.dev/malini)** runs many Claude Code agents side by side and takes each one to a merged pull request.
 
