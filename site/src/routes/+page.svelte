@@ -5,7 +5,7 @@
 	import Arrow from '#lib/Arrow.svelte';
 	import BeatLabel, { type Beat } from '#lib/BeatLabel.svelte';
 	import FeatureRow from '#lib/FeatureRow.svelte';
-	import Glow, { type Layer } from '#lib/Glow.svelte';
+	import Glow, { within, type Box, type Layer } from '#lib/Glow.svelte';
 	import Head from '#lib/Head.svelte';
 	import Icon from '#lib/Icon.svelte';
 	import Pill from '#lib/Pill.svelte';
@@ -27,6 +27,14 @@
 	let { data }: PageProps = $props();
 
 	const HORIZON: readonly Layer[] = [{ box: [0, -0.46, 1, 0.9], peak: [0.42, 0.86], start: 0.18 }];
+	// The close's: three colors in the glow's box. The canvas reaches a fifth of that box past it on every side
+	// (`.close .gl`), so the light fades out before the canvas ends.
+	const GLOW: Box = [1 / 7, 1 / 7, 5 / 7, 5 / 7];
+	const CLOSING: readonly Layer[] = [
+		{ box: within([0, 0.06, 0.55, 0.8], GLOW), color: '#1957fa', peak: [1, 1] },
+		{ box: within([0.25, 0.18, 0.5, 0.7], GLOW), color: '#d94f46', peak: [1, 1] },
+		{ box: within([0.55, 0.12, 0.45, 0.7], GLOW), color: '#fb8600', peak: [1, 1] },
+	];
 
 	const doc = (slug: string) => docHref(`/docs/${slug}`);
 
@@ -517,6 +525,9 @@
 	<div class="wrap">
 		<div class="close">
 			<div class="glow" aria-hidden="true"></div>
+			<div class="gl" aria-hidden="true">
+				<Glow layers={CLOSING} opacity={0.14} soft={0.25} weighted />
+			</div>
 			<BeatLabel {...beat('start')} />
 			<div class="end">
 				<div class="rise">
@@ -723,7 +734,7 @@
 		animation: swell calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
 	}
 
-	.gl {
+	.plate .gl {
 		inset: 0 calc(50% - var(--col) / 2);
 		color: var(--panel);
 		animation: grow calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
@@ -1225,6 +1236,13 @@
 		filter: blur(48px);
 		opacity: 0.14;
 		pointer-events: none;
+	}
+
+	/* The glow drawn by WebGL, smooth where the CSS one steps; it paints its own background, so it covers the CSS
+	   glow once it draws. */
+	.close .gl {
+		inset: -8% 6% -18% -4%;
+		color: var(--surface-root);
 	}
 
 	.end {

@@ -8,6 +8,9 @@
 		start?: number;
 	}>;
 
+	/** A box given as shares of `outer`, itself shares of the canvas. */
+	export const within = ([x, y, w, h]: Box, [ox, oy, ow, oh]: Box): Box => [ox + x * ow, oy + y * oh, w * ow, h * oh];
+
 	const MAX = 3;
 
 	const FRAGMENT = `

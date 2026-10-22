@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import Arrow from '#lib/Arrow.svelte';
 	import BeatLabel, { type Beat } from '#lib/BeatLabel.svelte';
+	import StageLight from '#lib/StageLight.svelte';
 
 	type Props = {
 		id: string;
@@ -16,6 +17,11 @@
 	};
 
 	let { id, beat, title, body, href, linkLabel, checks, mirrored = false, children }: Props = $props();
+
+	let windowElement = $state<HTMLElement>();
+	let lit = $state(false);
+	// The stage light casts the shadow of the window's card or screenshot.
+	const caster = $derived(windowElement?.firstElementChild ?? undefined);
 </script>
 
 <section {id} class="beat feature" aria-labelledby="{id}-title">
@@ -40,7 +46,8 @@
 			</ul>
 		</div>
 		<div class="stage">
-			<div class="window rise">{@render children()}</div>
+			<StageLight side={mirrored ? 'right' : 'left'} {caster} bind:lit />
+			<div class={['window', 'rise', { lit }]} bind:this={windowElement}>{@render children()}</div>
 		</div>
 	</div>
 </section>
@@ -118,6 +125,7 @@
 	}
 
 	.stage {
+		position: relative;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -132,10 +140,18 @@
 	}
 
 	.window {
+		position: relative;
 		display: flex;
 		justify-content: center;
 		width: 100%;
 		container-type: inline-size;
+	}
+
+	/* Lit, the stage draws the window's long shadow, which a CSS shadow draws in steps. */
+	.window.lit > :global(*) {
+		box-shadow:
+			0 0 0 1px var(--ring-faint),
+			0 2px 4px rgb(0 0 0 / 0.08);
 	}
 
 	@media (max-width: 1023px) {

@@ -52,6 +52,7 @@
 	--cross: rgb(128 128 128 / 0.7);
 	--brand: light-dark(oklch(51.51% 0.2399 257.85), oklch(51.51% 0.2307 257.85));
 	--success: light-dark(oklch(51.56% 0.1507 147.5), oklch(63.31% 0.1776 147.5));
+	--stage-ink: light-dark(#181817, #fafaf8);
 	--painting: linear-gradient(
 		100deg,
 		#1957fa 6%,
@@ -61,7 +62,6 @@
 		#ed3e11 72%,
 		#fb8400 94%
 	);
-
 
 	--sans:
 		'Inter Variable', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
