@@ -5,7 +5,7 @@ export const SITE_URL = `${SITE_ORIGIN}/tony`;
 export const SITE_DESCRIPTION =
 	'Talk to your AI agents: hold a key, speak your prompt, let go. Tony is free, open source dictation for Mac, private and offline, in 25 languages.';
 
-export const DOWNLOAD_URL = 'https://github.com/bestboyhq/tony/releases/latest';
+export const DOWNLOAD_URL = 'https://bestboy.dev/download/tony';
 export const GITHUB_URL = 'https://github.com/bestboyhq/tony';
 export const BESTBOY_URL = 'https://bestboy.dev';
 export const MALINI_URL = 'https://bestboy.dev/malini';

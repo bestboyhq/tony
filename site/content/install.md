@@ -12,7 +12,7 @@ description: Download Tony, the free dictation app for Mac, allow the microphone
 
 ## Install
 
-1. [Download Tony](https://github.com/bestboyhq/tony/releases/latest), open the disk image, and drag Tony to Applications.
+1. [Download Tony](https://bestboy.dev/download/tony), open the disk image, and drag Tony to Applications.
    Open it from the disk image or Downloads instead, and Tony offers to move itself there, since it can only update itself from the Applications folder.
 2. Open it.
    Tony asks which key you'll hold, then for the microphone and Accessibility, one at a time, while the speech model downloads.
