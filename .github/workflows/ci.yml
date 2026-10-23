@@ -27,6 +27,9 @@ jobs:
         with:
           path: .build
           key: build-${{ steps.image.outputs.id }}-${{ hashFiles('Package.resolved') }}
+      # On a cache miss SwiftPM downloads the binary targets from GitHub (an 87 MB xcframework), which times out now and then, so it gets three tries.
+      - &resolve
+        run: for _ in 1 2 3; do swift package resolve && exit 0; sleep 10; done; exit 1
       - run: swift build --build-tests
       - run: swift test --skip-build
       - run: node --test 'scripts/*.test.ts'
@@ -110,6 +113,7 @@ jobs:
         with:
           path: .build
           key: build-${{ steps.image.outputs.id }}-${{ hashFiles('Package.resolved') }}
+      - *resolve
       - *import-certificate
       - run: xcrun notarytool store-credentials tony --apple-id "$APPLE_ID" --team-id 59F3NS99CS --password "$APPLE_APP_SPECIFIC_PASSWORD"
         env:
