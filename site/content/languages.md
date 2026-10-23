@@ -45,13 +45,13 @@ See [Speed and accuracy](/tony/docs/speed-and-accuracy.md).
 Settings has a Languages menu: Any language, or the ones you speak, as many as you like.
 Until you pick, Tony starts with the languages your Mac is set up for: the ones in your language list and your keyboards.
 
-Picking matters most for languages that share sounds across alphabets.
-Without a hint, the model can write Polish "Tak" in Cyrillic, as "Так".
-When every language you picked uses one alphabet (Latin, Cyrillic, or Greek), Tony keeps the text in it.
-Pick languages in more than one alphabet, or Any language, and the model is free to choose.
+Picking keeps every word in the letters of the languages you speak.
+Without it, the model can write Polish "Tak" in Cyrillic, as "Так", and where the audio is unclear, drift into a language you don't speak, like Czech "pořád" or Hungarian "részünk" in the middle of Polish.
+Pick Polish and English, and "deploy" stays while "ř" never lands; pick Polish and Ukrainian, and both alphabets stay.
+Pick Any language, and the model is free to choose.
 
 The menu also lists Belarusian, Bosnian, and Serbian.
-They are not among the 25 languages Parakeet was trained on, so picking one only keeps the text in its alphabet.
+They are not among the 25 languages Parakeet was trained on, so picking one only keeps the text in its letters.
 
 ## Switch languages mid-dictation
 

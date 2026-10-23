@@ -17,14 +17,20 @@ Speech to text on the Neural Engine.
   Load at launch and keep the model warm, so the first key press finds it ready.
 - Trim silence at both ends with voice activity detection, and insert nothing when there is no speech.
   Speech models invent text ("Thank you.") from silence and noise.
-- Dictation transcribes in the background while the user still speaks: the first pause after five seconds of talk closes a segment, so key up only transcribes what came after the last one, after a sentence or five minutes of talk.
-  A pause is one quiet voice activity window, a breath: fluent speech seldom pauses for two, and segments only past 30 s left key up the whole dictation (158 ms median against 62 ms).
+- Dictation transcribes in the background while the user still speaks: the first pause after ten seconds of talk closes a segment, so key up only transcribes what came after the last one, after a sentence or five minutes of talk.
+  A pause is two quiet voice activity windows, half a second; one is a breath, often mid-sentence.
+  Parakeet hears each segment alone and ends it as a sentence, so short segments cost words: cutting at each breath after five seconds made 16% more word errors in English than 30 s segments, and ten seconds to a pause made none more.
+  Ten seconds also keeps a segment within the model's one 15 s window, which costs about the same at any length up to it.
+  At each breath, the rest of the segment is drafted, and when the user lets go without saying more, the draft is the text: key up took 2 ms (median) against 58 ms for five-second segments.
+  The draft covers the same windows key up would, so it changes no word.
   Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
-  Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`), against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
-  Shorter segments split more sentences, and Parakeet ends each one as a sentence: at three seconds, punctuation slipped.
-- Parakeet picks its language per clip by itself, and short clips can come out in the wrong alphabet (Polish "Tak." as "Так.").
-  The user's languages, by default the Mac's languages and the first language of each keyboard, keep it to their alphabet through FluidAudio's language hint (`Speech.hint`).
-  The hint only filters by alphabet (and keeps English out of French alone): it can't tell Polish from Czech, and languages in two alphabets leave Parakeet free.
+  Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`) with release builds, against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
+  Join clips into dictations at one loudness: FLEURS speakers range down to -69 dB, and the voice activity detection misses a quiet speaker right after a loud one.
+- Parakeet writes `<unk>` for what it can't spell, such as quotes and brackets: it comes out (`Cleanup.dropUnknown`).
+- Parakeet picks its language per clip by itself: short clips can come out in the wrong alphabet (Polish "Tak." as "Так."), and where the audio is unclear (noise, a far mic) it drifts into another language of the same alphabet (FLEURS Polish under pink noise came out with Czech "pořád", Hungarian "részünk", and whole Lithuanian sentences).
+  The user's languages, by default the Mac's languages and the first language of each keyboard, keep its tokens to their letters: Tony passes them to `AsrManager.transcribe(_:decoderState:languages:)`, which our FluidAudio fork adds (ADR 0010).
+  A token passes when it is in the letters of any of them, ASCII always included, so Polish keeps "deploy" and drops "ř", Polish with Ukrainian keeps both alphabets, and French alone also keeps English words out.
+  It can't tell languages apart that share letters, and it can't make a drifted word right: the words were wrong either way, now in the user's letters.
 - Parakeet hears one language per clip, and reports none.
   When the user switches language mid-dictation, it garbles one language or drops it ("Can you send me the report, do końca dnia" came out Polish only).
   Where part of a clip comes out unsure or wordless, each run is transcribed on its own (`Segments.languages`), and kept only if Parakeet is sure of it.

@@ -191,7 +191,7 @@ fn down → event tap → other audio fades, media pauses → AVAudioEngine, 16 
 ```
 
 - Native Swift 6 with SwiftUI, and AppKit for the status item, the non-activating pill and panel, and the event tap.
-- Two dependencies: [FluidAudio](https://github.com/FluidInference/FluidAudio) runs the models through Core ML, and [Sparkle](https://sparkle-project.org) handles updates.
+- Two dependencies: [FluidAudio](https://github.com/FluidInference/FluidAudio) runs the models through Core ML (from [our fork](https://github.com/bestboyhq/FluidAudio) until it ships per-language letters), and [Sparkle](https://sparkle-project.org) handles updates.
 - Swift Package Manager only, no Xcode project.
   A script assembles, signs, and notarizes the app.
 
