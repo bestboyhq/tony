@@ -12,6 +12,12 @@ nonisolated enum Cleanup {
         "э", "ээ", "эм", "ммм",  // Russian, Ukrainian
     ]
 
+    /// Drops `<unk>`, which Parakeet writes for what it can't spell: "jonów wodoru (litera" came out
+    /// "jonów wodoru <unk>literę".
+    static func dropUnknown(_ text: String) -> String {
+        text.replacingOccurrences(of: "<unk>", with: " ").split(separator: " ").joined(separator: " ")
+    }
+
     /// Drops filler words, keeping the punctuation and capitals of the sentence around them.
     static func removeFillers(_ text: String) -> String {
         var words: [String] = []

@@ -5,16 +5,17 @@ import OSLog
 /// One dictation: takes 16 kHz samples as they arrive, tracks speech with voice activity detection,
 /// and turns them into text.
 ///
-/// Dictation transcribes in the background while the user still speaks: the first pause after five seconds
+/// Dictation transcribes in the background while the user still speaks: the first pause after ten seconds
 /// of talk closes a segment, so key up only transcribes what came after the last one, and Parakeet never sees
-/// the several minutes of audio where it degrades. Cutting inside a pause means no word is cut.
+/// the several minutes of audio where it degrades. Cutting inside a pause means no word is cut. And at each
+/// breath, the rest is drafted: when the user lets go without saying more, the draft is the text.
 actor Session {
     static let speechThreshold: Float = 0.6
     static let window = VadManager.chunkSize  // 256 ms at 16 kHz
-    /// A background segment closes at the first pause after this much of it (in VAD windows): ~5 s. On
-    /// LibriSpeech and FLEURS fed in real time, key up took 62 ms (median) against 158 ms with segments only
-    /// past 30 s, with fewer word errors; at 3 s, punctuation slipped where sentences were split.
-    static let segmentAfter = 20
+    /// A background segment closes at the first pause after this much of it (in VAD windows): ~10 s, so it
+    /// fits the model's one 15 s window. Each segment is a clip Parakeet hears alone: at 5 s and a breath,
+    /// FLEURS dictations of three sentences came out with 16% more word errors in English than with 30 s.
+    static let segmentAfter = 40
     /// Past this (~2 min) with no pause, cut at the quietest window anyway.
     static let forceAfter = 470
 
@@ -30,6 +31,8 @@ actor Session {
     private var committed = 0
     private var texts: [String] = []
     private var background: Task<Void, Never>?
+    /// The windows since the last cut, transcribed at the user's last breath.
+    private var draft: (windows: Range<Int>, text: Task<String, Never>)?
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
     init(asr: AsrManager, vad: VadManager, language: Language?, words: Words?) {
@@ -46,14 +49,23 @@ actor Session {
             let start = probabilities.count * Self.window
             await classify(Array(samples[start..<start + Self.window]))
         }
+        let previous = background
         if let cut = Segments.cut(probabilities, from: committed, after: Self.segmentAfter, force: Self.forceAfter) {
             let range = committed..<cut
             committed = cut
-            let previous = background
+            let drafted = draft?.windows == range ? draft?.text : nil
             background = Task {
                 await previous?.value
-                texts.append(await transcribe(range))
+                if let drafted { texts.append(await drafted.value) } else { texts.append(await transcribe(range)) }
             }
+        } else if let last = probabilities.indices.last, last > committed, draft?.windows != committed..<probabilities.count,
+                  probabilities[last] < Self.speechThreshold, probabilities[last - 1] >= Self.speechThreshold {
+            // A breath: what key up would transcribe, should the user say nothing more.
+            let windows = committed..<probabilities.count
+            draft = (windows, Task {
+                await previous?.value
+                return await transcribe(windows)
+            })
         }
     }
 
@@ -65,7 +77,12 @@ actor Session {
             await classify(Array(samples[start...]) + [Float](repeating: 0, count: Self.window - tail))
         }
         await background?.value
-        texts.append(await transcribe(committed..<probabilities.count))
+        // Nothing said since the draft: its speech, padded and trimmed, is what is left.
+        if let draft, draft.windows.lowerBound == committed, !probabilities[draft.windows.upperBound...].contains(where: { $0 >= Self.speechThreshold }) {
+            texts.append(await draft.text.value)
+        } else {
+            texts.append(await transcribe(committed..<probabilities.count))
+        }
         return texts.filter { !$0.isEmpty }.joined(separator: " ")
     }
 
@@ -117,11 +134,11 @@ actor Session {
             let result = try await asr.transcribe(audio, decoderState: &decoder, language: language)
             guard let words, let heard = await heard else {
                 log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s in \(result.processingTime * 1000, format: .fixed(precision: 0)) ms")
-                return (result.text, result.tokenTimings ?? [])
+                return (Cleanup.dropUnknown(result.text), result.tokenTimings ?? [])
             }
             let text = words.apply(to: result, heard: heard)
             log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s with the user's words in \(Date().timeIntervalSince(started) * 1000, format: .fixed(precision: 0)) ms")
-            return (text, result.tokenTimings ?? [])
+            return (Cleanup.dropUnknown(text), result.tokenTimings ?? [])
         } catch {
             log.error("transcription failed: \(error.localizedDescription, privacy: .public)")
             return nil
@@ -139,12 +156,12 @@ nonisolated enum Segments {
         return max(range.lowerBound, first - 1)..<min(range.upperBound, last + 2)
     }
 
-    /// Where to close a background segment that starts at window `start`, if it is time: at the first pause
-    /// past its first `after` windows, or at the quietest window once `force` windows wait without one. A pause
-    /// is one quiet window, a breath (Silero reads about 0.2 between sentences): fluent speech seldom pauses for
-    /// two. The quiet window starts the next segment, which kept more words than ending this one with it.
+    /// Where to close a background segment that starts at window `start`, if it is time: in the middle of the
+    /// first pause past its first `after` windows, or at the quietest window once `force` windows wait without
+    /// one. A pause is two quiet windows, half a second (Silero reads about 0.2 between sentences): one quiet
+    /// window is a breath, often mid-sentence, and cutting there cost words on both sides.
     static func cut(_ probabilities: [Float], from start: Int, after: Int, force: Int, quiet: Float = 0.4) -> Int? {
-        if let pause = probabilities.indices.dropFirst(start + after).first(where: { probabilities[$0] < quiet }) { return pause }
+        if let pause = probabilities.indices.dropFirst(start + after).dropLast().first(where: { probabilities[$0] < quiet && probabilities[$0 + 1] < quiet }) { return pause + 1 }
         guard probabilities.count - start >= force else { return nil }
         return ((probabilities.count - after)..<probabilities.count).min { probabilities[$0] < probabilities[$1] }
     }

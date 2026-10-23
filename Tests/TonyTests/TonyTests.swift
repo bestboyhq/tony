@@ -67,6 +67,11 @@ import os
         #expect(Cleanup.removeFillers("Ah, I see.") == "Ah, I see.")
     }
 
+    @Test func unknownTokens() {
+        #expect(Cleanup.dropUnknown("jonów wodoru <unk>literę H") == "jonów wodoru literę H")
+        #expect(Cleanup.dropUnknown("rzędu <unk> Sachin") == "rzędu Sachin")
+    }
+
     @Test func fitsTheCursor() {
         #expect(Cleanup.fit("Hello there.", after: nil) == "Hello there.")
         #expect(Cleanup.fit("Hello there.", after: "") == "Hello there.")
@@ -112,14 +117,22 @@ import os
         #expect(Segments.speech([0, 0.1, 0.3], in: 0..<3, threshold: 0.6) == nil)
     }
 
-    @Test func cutsAtTheFirstPauseOfASegment() {
+    /// `Session` drafts at a breath and keeps the draft at key up when nothing was said since.
+    @Test func aDraftAtABreathHearsWhatKeyUpWould() {
+        let breath: [Float] = [0, 0.9, 0.9, 0.9, 0.2]
+        let keyUp = breath + [0.1, 0.5, 0.3]
+        #expect(Segments.speech(breath, in: 0..<5, threshold: 0.6) == Segments.speech(keyUp, in: 0..<8, threshold: 0.6))
+    }
+
+    @Test func cutsInTheFirstPauseOfASegment() {
         var p = [Float](repeating: 0.9, count: 40)
-        p[5] = 0.1  // too soon: a segment has `after` windows first
-        p[25] = 0.1
-        p[30] = 0.1
-        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 25)  // the pause starts the next segment
-        #expect(Segments.cut(p, from: 25, after: 4, force: 100) == 30)
-        #expect(Segments.cut(Array(p[..<25]), from: 0, after: 20, force: 100) == nil)  // no pause yet
+        p[4...5] = [0.1, 0.1]  // too soon: a segment has `after` windows first
+        p[22] = 0.1  // a breath, not a pause
+        p[25...26] = [0.1, 0.1]
+        p[32...33] = [0.1, 0.1]
+        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 26)  // each side keeps half the pause
+        #expect(Segments.cut(p, from: 26, after: 4, force: 100) == 33)
+        #expect(Segments.cut(Array(p[..<26]), from: 0, after: 20, force: 100) == nil)  // no pause yet
     }
 
     @Test func forcesACutWithoutAPause() {
