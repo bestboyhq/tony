@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     static func main() {
         if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--transcribe" {
-            Task { exit(await transcribe(CommandLine.arguments[2])) }
+            Task { exit(await transcribe(CommandLine.arguments.dropFirst(2).prefix { !$0.hasPrefix("-") })) }
             RunLoop.main.run()
         }
         let app = NSApplication.shared
@@ -23,29 +23,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         withExtendedLifetime(delegate) { app.run() }
     }
 
-    /// `Tony --transcribe <audio file> [-words '(Szymon, Supabase)']`: the speech path of a dictation (model,
-    /// voice activity detection, the user's words, cleanup) without the mic or the key, fed in 20 ms chunks
-    /// like the mic does. For checking speech changes.
-    private static func transcribe(_ path: String) async -> Int32 {
+    /// `Tony --transcribe <audio file>... [-words '(Szymon, Supabase)'] [-realtime YES]`: the speech path of a
+    /// dictation (model, voice activity detection, the user's words, cleanup) without the mic or the key, fed in
+    /// 20 ms chunks like the mic does, one file after another on the warm model. Times key up: what is left once
+    /// the audio is in. Only `-realtime YES`, which feeds as fast as the mic would, leaves the background its time.
+    private static func transcribe(_ paths: some Collection<String>) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
         await speech.learn(Prefs.words)
-        guard let session = speech.session(languages: Prefs.languages) else {
-            print("speech not ready: \(speech.state)")
-            return 1
+        for path in paths {
+            guard let session = speech.session(languages: Prefs.languages) else {
+                print("speech not ready: \(speech.state)")
+                return 1
+            }
+            guard let samples = try? AudioConverter().resampleAudioFile(path: path) else {
+                print("can't read \(path)")
+                return 1
+            }
+            let realtime = UserDefaults.standard.bool(forKey: "realtime"), began = ContinuousClock.now
+            for start in stride(from: 0, to: samples.count, by: 320) {
+                if realtime { try? await Task.sleep(until: began + .seconds(Double(start) / 16000), clock: .continuous) }
+                await session.append(Array(samples[start..<min(start + 320, samples.count)]))
+            }
+            let keyUp = Date()
+            let text = Cleanup.removeFillers(await session.finish())
+            print(text)
+            let timing = String(format: "%.1f s of audio, key up to text %.0f ms\n", Double(samples.count) / 16000, Date().timeIntervalSince(keyUp) * 1000)
+            FileHandle.standardError.write(Data(timing.utf8))
         }
-        guard let samples = try? AudioConverter().resampleAudioFile(path: path) else {
-            print("can't read \(path)")
-            return 1
-        }
-        let started = Date()
-        for start in stride(from: 0, to: samples.count, by: 320) {
-            await session.append(Array(samples[start..<min(start + 320, samples.count)]))
-        }
-        let text = Cleanup.removeFillers(await session.finish())
-        print(text)
-        let timing = String(format: "%.1f s of audio, %.0f ms\n", Double(samples.count) / 16000, Date().timeIntervalSince(started) * 1000)
-        FileHandle.standardError.write(Data(timing.utf8))
         return 0
     }
 

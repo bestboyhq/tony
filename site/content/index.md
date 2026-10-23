@@ -30,7 +30,7 @@ See [Settings](/tony/docs/settings.md) to change the key.
 1. **Your key goes down.** Listening starts at once, so your first word counts.
    Other audio fades out, so neither you nor the mic hears it.
 2. **You speak.** Silero voice activity detection follows your voice, and Tony trims the silence around it, so a quiet room never turns into a phantom sentence.
-   Past half a minute, Tony transcribes in the background at each pause while you keep talking.
+   Tony transcribes in the background at each pause while you keep talking.
 3. **You let go.** Parakeet Ultra writes the text with punctuation and capitals.
    If you added [your words](/tony/docs/your-words.md), Parakeet CTC 110M listens for them in the same audio.
 4. **Tony fits it to the cursor.** Filler words come out, and Tony reads the text before the cursor: a space after a word, none after an opening bracket, and no capital in the middle of a sentence.

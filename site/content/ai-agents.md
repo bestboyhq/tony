@@ -24,7 +24,7 @@ Tony pastes and stops: you read the prompt, then press Return yourself.
 - **Hold fn** for a quick instruction: "Run the tests again and fix what fails."
 - **Double-tap fn** for a long brief, and talk as long as you like, with your hands free.
   Tap fn again to finish.
-  Past half a minute, Tony transcribes in the background at each pause, so even a five-minute brief lands the moment you finish.
+  Tony transcribes in the background at each pause, so even a five-minute brief lands the moment you finish.
 - **Esc** cancels without typing, and keeps what you said as your last dictation in the [menu bar panel](/tony/docs/menu-bar.md), one click from Paste.
 - **Back to back.** Press the key again while your last prompt is still landing: it lands first, and the next one follows it.
 

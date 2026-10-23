@@ -112,18 +112,21 @@ import os
         #expect(Segments.speech([0, 0.1, 0.3], in: 0..<3, threshold: 0.6) == nil)
     }
 
-    @Test func cutsInsideAPause() {
+    @Test func cutsAtTheFirstPauseOfASegment() {
         var p = [Float](repeating: 0.9, count: 40)
-        p[20] = 0.1
-        p[21] = 0.1
-        #expect(Segments.cut(p, from: 0, after: 30, force: 100) == 21)
-        #expect(Segments.cut(p, from: 0, after: 50, force: 100) == nil)  // not time yet
+        p[5] = 0.1  // too soon: a segment has `after` windows first
+        p[25] = 0.1
+        p[30] = 0.1
+        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 25)  // the pause starts the next segment
+        #expect(Segments.cut(p, from: 25, after: 4, force: 100) == 30)
+        #expect(Segments.cut(Array(p[..<25]), from: 0, after: 20, force: 100) == nil)  // no pause yet
     }
 
     @Test func forcesACutWithoutAPause() {
         var p = [Float](repeating: 0.9, count: 120)
-        p[100] = 0.5
-        #expect(Segments.cut(p, from: 0, after: 30, force: 100) == 101)
+        p[110] = 0.5
+        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 110)
+        #expect(Segments.cut(Array(p[..<99]), from: 0, after: 20, force: 100) == nil)  // not past `force` yet
     }
 
     /// "Can you send me the report", a pause, "do końca dnia": 20 windows of 256 ms, the pause in windows 6 and 7.

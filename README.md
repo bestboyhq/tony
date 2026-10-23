@@ -54,7 +54,7 @@ Your voice never leaves the Mac.
 
 - **Your first word counts.** The audio engine stays prepared between dictations, so capture starts on key down, not a beat later.
 - **Warm from the first press.** The model loads at launch and pays its Neural Engine setup up front, so the first dictation of the day is as quick as the hundredth.
-- **Talk for five minutes, wait for none.** Past half a minute, Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a long ramble as after one sentence.
+- **Talk for five minutes, wait for none.** Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a long ramble as after one sentence.
 - **Back to back.** Press the key again while your last dictation is still landing: it lands first, and the new one follows it.
 - **Idle is free.** Between dictations the mic is closed, so no orange dot, and the CPU rests.
 
