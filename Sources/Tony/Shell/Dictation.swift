@@ -137,8 +137,10 @@ final class Dictation {
 
         let (stream, feed) = AsyncStream.makeStream(of: [Float].self)
         self.feed = feed
-        feeder = Task.detached { for await chunk in stream { await session.append(chunk) } }
-        cursor = Task.detached {
+        // The user waits on this work: user-initiated, so a busy Mac (a build, an agent) doesn't put the
+        // voice activity detection behind, which key up would then wait for.
+        feeder = Task.detached(priority: .userInitiated) { for await chunk in stream { await session.append(chunk) } }
+        cursor = Task.detached(priority: .userInitiated) {
             await previous?.value
             return Cursor.textBefore()
         }
@@ -195,11 +197,12 @@ final class Dictation {
         }
     }
 
-    /// Closes the mic and turns what it heard into text.
+    /// Closes the mic and turns what it heard into text, off the main thread: the HUD's frames hold it while
+    /// a busy WindowServer takes them, and the steps through it after key up waited 120 to 260 ms behind them.
     private func hear() -> Task<(summary: Mic.Summary, raw: String), Never> {
         let stopped = mic.stop()
         let (feed, feeder, session) = (feed, feeder, session)
-        return Task {
+        return Task.detached(priority: .userInitiated) {
             let summary = await stopped.value
             feed?.finish()
             await feeder?.value

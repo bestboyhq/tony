@@ -303,7 +303,7 @@
 	id="fast"
 	beat={beat('fast', 'Speed')}
 	title="Fast, from the first word"
-	body="A sentence takes about 50 ms on the Neural Engine. Past half a minute, Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a five-minute brief as after one line."
+	body="A sentence takes about 50 ms on the Neural Engine. Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a five-minute brief as after one line."
 	href={doc('speed-and-accuracy')}
 	linkLabel="Speed and accuracy"
 	checks={[

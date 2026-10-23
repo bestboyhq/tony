@@ -17,8 +17,11 @@ Speech to text on the Neural Engine.
   Load at launch and keep the model warm, so the first key press finds it ready.
 - Trim silence at both ends with voice activity detection, and insert nothing when there is no speech.
   Speech models invent text ("Thank you.") from silence and noise.
-- Long dictation transcribes in the background while the user still speaks, in overlapping chunks stitched at a pause, so key up stays fast after five minutes of talk.
-  Grip learned this: Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+- Dictation transcribes in the background while the user still speaks: the first pause after five seconds of talk closes a segment, so key up only transcribes what came after the last one, after a sentence or five minutes of talk.
+  A pause is one quiet voice activity window, a breath: fluent speech seldom pauses for two, and segments only past 30 s left key up the whole dictation (158 ms median against 62 ms).
+  Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+  Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`), against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
+  Shorter segments split more sentences, and Parakeet ends each one as a sentence: at three seconds, punctuation slipped.
 - Parakeet picks its language per clip by itself, and short clips can come out in the wrong alphabet (Polish "Tak." as "Так.").
   The user's languages, by default the Mac's languages and the first language of each keyboard, keep it to their alphabet through FluidAudio's language hint (`Speech.hint`).
   The hint only filters by alphabet (and keeps English out of French alone): it can't tell Polish from Czech, and languages in two alphabets leave Parakeet free.
