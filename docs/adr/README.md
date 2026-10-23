@@ -14,3 +14,4 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0007](0007-the-dictation-stays-on-the-clipboard.md)                   | Paste through the clipboard and leave the dictation there, so a failed paste is one ⌘V away            |
 | [0008](0008-pause-now-playing-through-osascript.md)                    | Fade other audio out, then pause Now Playing through MediaRemote in `osascript`; play what it paused   |
 | [0009](0009-a-prerendered-website-at-bestboy-dev-tony.md)              | A prerendered SvelteKit site in `site/`, served by a Cloudflare Worker on `bestboy.dev/tony*`          |
+| [0010](0010-fluidaudio-from-our-fork-for-per-language-letters.md)      | FluidAudio from `bestboyhq/FluidAudio`, which keeps Parakeet to the letters of the user's languages    |

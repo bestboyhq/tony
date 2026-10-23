@@ -96,17 +96,12 @@ final class Speech {
         }
     }
 
+    /// FluidAudio keeps Parakeet to the letters of the user's `languages`: without them, Polish "Tak" came out
+    /// Cyrillic "Так", and unclear Polish came out with Czech "pořád". French alone also keeps English words out.
+    /// No languages leave Parakeet free.
     func session(languages: Set<Language>) -> Session? {
         guard let asr, let vad else { return nil }
-        return Session(asr: asr, vad: vad, language: Self.hint(languages), words: words)
-    }
-
-    /// FluidAudio's language hint keeps Parakeet to that language's alphabet (Polish "Tak" comes out Cyrillic
-    /// "Так" without one) and, for French alone, keeps English words out. Languages in several alphabets, or
-    /// none, leave Parakeet free.
-    static func hint(_ languages: Set<Language>) -> Language? {
-        guard Set(languages.map(\.script)).count == 1 else { return nil }
-        return languages.count == 1 ? languages.first : languages.first { $0 != .french }
+        return Session(asr: asr, vad: vad, languages: languages, words: words)
     }
 
     /// Teaches Tony the user's words. Their model (~100 MB) downloads the first time there are any.
