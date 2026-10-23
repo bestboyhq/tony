@@ -225,7 +225,7 @@ Pull request titles follow [Conventional Commits](https://www.conventionalcommit
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) by FluidInference, Apache 2.0
 - [Sparkle](https://sparkle-project.org), MIT
 
-Tony is a sibling of [Grip](https://github.com/bestboyhq/grip), the free and open source screen recorder.
+Tony is a sibling of [Grip](https://bestboy.dev/grip), the free and open source screen recorder.
 
 ## License
 
