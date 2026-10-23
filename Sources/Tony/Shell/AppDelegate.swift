@@ -23,9 +23,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         withExtendedLifetime(delegate) { app.run() }
     }
 
-    /// `Tony --transcribe <audio file>... [-words '(Szymon, Supabase)']`: the speech path of a dictation (model,
-    /// voice activity detection, the user's words, cleanup) without the mic or the key, fed in 20 ms chunks
-    /// like the mic does, one file after another on the warm model. Times key up: what is left once the audio is in.
+    /// `Tony --transcribe <audio file>... [-words '(Szymon, Supabase)'] [-realtime YES]`: the speech path of a
+    /// dictation (model, voice activity detection, the user's words, cleanup) without the mic or the key, fed in
+    /// 20 ms chunks like the mic does, one file after another on the warm model. Times key up: what is left once
+    /// the audio is in. Only `-realtime YES`, which feeds as fast as the mic would, leaves the background its time.
     private static func transcribe(_ paths: some Collection<String>) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
@@ -39,7 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 print("can't read \(path)")
                 return 1
             }
+            let realtime = UserDefaults.standard.bool(forKey: "realtime"), began = ContinuousClock.now
             for start in stride(from: 0, to: samples.count, by: 320) {
+                if realtime { try? await Task.sleep(until: began + .seconds(Double(start) / 16000), clock: .continuous) }
                 await session.append(Array(samples[start..<min(start + 320, samples.count)]))
             }
             let keyUp = Date()
