@@ -51,7 +51,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - Native Swift 6 with SwiftUI, and AppKit where SwiftUI falls short: status item, non-activating panels, event taps.
 - Swift Package Manager only: `Package.swift` and plain files diff and merge cleanly, an Xcode project's `.pbxproj` does not.
   A script assembles, signs, and notarizes the `.app`.
-- Speech: NVIDIA Parakeet TDT v3, post-trained by Moondream as Parakeet Ultra, on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML), with Silero voice activity detection, and Parakeet CTC 110M listening for the user's words.
+- Speech: NVIDIA Parakeet TDT v3, post-trained by Moondream as Parakeet Ultra, on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio) (Core ML; our fork `bestboyhq/FluidAudio` until a release keeps Parakeet to the user's letters, ADR 0010), with Silero voice activity detection, and Parakeet CTC 110M listening for the user's words.
 - Swift 6 with `MainActor` as the default isolation: code that runs off the main thread (the event tap, the audio thread, speech) says `nonisolated` or is an actor.
 - Updates: [Sparkle 2](https://sparkle-project.org) from GitHub Releases.
 - macOS 15+, Apple silicon only: the model runs on the Neural Engine.

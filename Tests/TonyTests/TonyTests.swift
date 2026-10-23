@@ -168,17 +168,6 @@ import os
     }
 }
 
-@Suite struct LanguageHintTests {
-    @Test func keepsToTheUsersAlphabet() {
-        #expect(Speech.hint([]) == nil)
-        #expect(Speech.hint([.polish]) == .polish)
-        #expect(Speech.hint([.english, .polish])?.script == .latin)
-        #expect(Speech.hint([.english, .ukrainian]) == nil)  // two alphabets: Parakeet stays free
-        #expect(Speech.hint([.french]) == .french)
-        #expect(Speech.hint([.english, .french]) == .english)  // French's hint keeps English words out
-    }
-}
-
 @Suite struct PasteKeyTests {
     private func layout(_ id: String) -> TISInputSource {
         let list = TISCreateInputSourceList([kTISPropertyInputSourceID as String: id] as CFDictionary, true).takeRetainedValue() as! [TISInputSource]

@@ -27,11 +27,10 @@ Speech to text on the Neural Engine.
   Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`) with release builds, against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
   Join clips into dictations at one loudness: FLEURS speakers range down to -69 dB, and the voice activity detection misses a quiet speaker right after a loud one.
 - Parakeet writes `<unk>` for what it can't spell, such as quotes and brackets: it comes out (`Cleanup.dropUnknown`).
-- Parakeet picks its language per clip by itself, and short clips can come out in the wrong alphabet (Polish "Tak." as "Так.").
-  The user's languages, by default the Mac's languages and the first language of each keyboard, keep it to their alphabet through FluidAudio's language hint (`Speech.hint`).
-  The hint only filters by alphabet (and keeps English out of French alone): it can't tell Polish from Czech, and languages in two alphabets leave Parakeet free.
-  Where the audio is unclear (noise, a far mic), Parakeet drifts into another Latin-alphabet language mid-clip: FLEURS Polish under pink noise came out with Czech "pořád", Hungarian "részünk", and whole Lithuanian sentences.
-  Keeping its tokens to the letters of the user's languages removed every such word in a FluidAudio patch, at the same word error rate: the words were wrong either way, now in the user's letters.
+- Parakeet picks its language per clip by itself: short clips can come out in the wrong alphabet (Polish "Tak." as "Так."), and where the audio is unclear (noise, a far mic) it drifts into another language of the same alphabet (FLEURS Polish under pink noise came out with Czech "pořád", Hungarian "részünk", and whole Lithuanian sentences).
+  The user's languages, by default the Mac's languages and the first language of each keyboard, keep its tokens to their letters: Tony passes them to `AsrManager.transcribe(_:decoderState:languages:)`, which our FluidAudio fork adds (ADR 0010).
+  A token passes when it is in the letters of any of them, ASCII always included, so Polish keeps "deploy" and drops "ř", Polish with Ukrainian keeps both alphabets, and French alone also keeps English words out.
+  It can't tell languages apart that share letters, and it can't make a drifted word right: the words were wrong either way, now in the user's letters.
 - Parakeet hears one language per clip, and reports none.
   When the user switches language mid-dictation, it garbles one language or drops it ("Can you send me the report, do końca dnia" came out Polish only).
   Where part of a clip comes out unsure or wordless, each run is transcribed on its own (`Segments.languages`), and kept only if Parakeet is sure of it.

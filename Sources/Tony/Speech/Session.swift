@@ -21,7 +21,7 @@ actor Session {
 
     private let asr: AsrManager
     private let vad: VadManager
-    private let language: Language?
+    private let languages: Set<Language>
     private let words: Words?
     private var samples: [Float] = []
     private var vadState: VadStreamState
@@ -35,10 +35,10 @@ actor Session {
     private var draft: (windows: Range<Int>, text: Task<String, Never>)?
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
-    init(asr: AsrManager, vad: VadManager, language: Language?, words: Words?) {
+    init(asr: AsrManager, vad: VadManager, languages: Set<Language>, words: Words?) {
         self.asr = asr
         self.vad = vad
-        self.language = language
+        self.languages = languages
         self.words = words
         vadState = VadStreamState.initial()
     }
@@ -131,7 +131,7 @@ actor Session {
             let started = Date()
             async let heard = try? words?.listen(audio)
             var decoder = TdtDecoderState.make(decoderLayers: await asr.decoderLayerCount)
-            let result = try await asr.transcribe(audio, decoderState: &decoder, language: language)
+            let result = try await asr.transcribe(audio, decoderState: &decoder, languages: languages)
             guard let words, let heard = await heard else {
                 log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s in \(result.processingTime * 1000, format: .fixed(precision: 0)) ms")
                 return (Cleanup.dropUnknown(result.text), result.tokenTimings ?? [])
