@@ -674,7 +674,6 @@
 			#fb8400 82%,
 			transparent 96%
 		);
-		--delay: 350ms;
 		isolation: isolate;
 		padding: 64px 0;
 		background: linear-gradient(var(--panel) 0 0) 50% 0 / var(--col) 100% no-repeat;
@@ -714,6 +713,11 @@
 		animation: grow calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
 	}
 
+	/* The seam draws out from the middle as the light grows. */
+	.plate {
+		animation: seam calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
+	}
+
 	.window {
 		--rise: 6px;
 		--blur: 8px;
@@ -725,6 +729,12 @@
 	@keyframes grow {
 		from {
 			--grow: 0;
+		}
+	}
+
+	@keyframes seam {
+		from {
+			--seam-w: 0;
 		}
 	}
 

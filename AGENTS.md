@@ -73,6 +73,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, and that `docs/adr/README.md` lists every ADR (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.
   `npx wrangler@4 dev` serves the built site through the Worker, as on bestboy.dev.
+- `gh workflow run CI --ref main` reruns CI on `main`, its release and site deploy included, when GitHub drops a merge's push event.
 - Add each new command here in the commit that adds it.
 
 ## Releases and updates

@@ -73,7 +73,7 @@ test('the home page describes Tony as a free SoftwareApplication in JSON-LD', ()
 	assert.deepEqual(app.offers, { '@type': 'Offer', price: '0', priceCurrency: 'USD' });
 	assert.equal(app.operatingSystem, 'macOS 15 or later');
 	assert.equal(app.processorRequirements, 'Apple silicon');
-	assert.equal(app.downloadUrl, 'https://github.com/bestboyhq/tony/releases/latest');
+	assert.equal(app.downloadUrl, 'https://bestboy.dev/download/tony');
 	assert.equal(app.license, 'https://www.gnu.org/licenses/agpl-3.0.html');
 	for (const key of ['image', 'screenshot'] as const) {
 		const url = String(app[key]);
