@@ -197,8 +197,6 @@
 	{schema}
 />
 
-<div class="progress" aria-hidden="true"></div>
-
 <section class="hero" aria-labelledby="hero-title">
 	<div class="wrap intro">
 		<a class="eyebrow" href={GITHUB_URL}>
@@ -558,30 +556,6 @@
 {/snippet}
 
 <style>
-	.progress {
-		display: none;
-	}
-
-	@supports (animation-timeline: scroll()) {
-		.progress {
-			position: fixed;
-			z-index: 50;
-			inset: 0 0 auto;
-			display: block;
-			height: 3px;
-			background: var(--painting);
-			transform-origin: 0 50%;
-			animation: fill linear both;
-			animation-timeline: scroll(root);
-		}
-	}
-
-	@keyframes fill {
-		from {
-			scale: 0 1;
-		}
-	}
-
 	/* The hero: an app's hero has no panel, and the painting glows behind its window, never behind text. */
 
 	.intro {
