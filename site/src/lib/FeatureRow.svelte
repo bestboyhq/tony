@@ -57,6 +57,28 @@
 		padding: 0;
 	}
 
+	/* Side by side, a row followed by another closes with its own line, and 64px of page part the two, so their
+	   stages never meet corner to corner. The line draws in like a beat's (app.css). */
+	@media (min-width: 1024px) {
+		.feature:has(+ :global(.feature)) {
+			margin-bottom: 64px;
+		}
+
+		.feature:has(+ :global(.feature))::after {
+			content: '';
+			position: absolute;
+			z-index: 1;
+			bottom: -4px;
+			left: 50%;
+			width: 100vw;
+			height: 9px;
+			margin-left: -50vw;
+			background: var(--crosses);
+			background-repeat: no-repeat;
+			pointer-events: none;
+		}
+	}
+
 	.row {
 		display: grid;
 		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
