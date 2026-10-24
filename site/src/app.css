@@ -285,12 +285,14 @@
 	}
 
 	.beat::before,
+	.feature::after,
 	.site:has(.hero) .sitemap::before {
 		animation: draw-in calc(900ms * var(--pace)) var(--enter-ease)
 			calc(var(--delay, 600ms) * var(--pace)) backwards;
 	}
 
-	:is(.beat, .sitemap)[data-reveal='wait']::before {
+	:is(.beat, .sitemap)[data-reveal='wait']::before,
+	.feature[data-reveal='wait']::after {
 		clip-path: inset(0 100% 0 0);
 		animation: none;
 	}
