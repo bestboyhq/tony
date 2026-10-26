@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The AGPL's "Appropriate Legal Notices" and the credits the model licenses ask for.
+/// The AGPL's "Appropriate Legal Notices" and the credits the licenses ask for, the components `NOTICE` lists.
 struct AboutView: View {
     var body: some View {
         VStack(spacing: 14) {
@@ -12,7 +12,7 @@ struct AboutView: View {
                 Text("Version \(Bundle.main.version)").foregroundStyle(.secondary)
             }
             VStack(spacing: 4) {
-                Text("Copyright © 2026 Best Boy")
+                Text("Copyright © 2026 Szymon Grącki and Tony contributors")
                 Text("Free software under the GNU Affero General Public License, version 3, with ABSOLUTELY NO WARRANTY.")
                     .foregroundStyle(.secondary)
             }
@@ -30,6 +30,7 @@ struct AboutView: View {
                 credit("Parakeet CTC 110M", "by NVIDIA, converted to Core ML by FluidInference, listens for your words.", license: "CC\u{00A0}BY\u{00A0}4.0", url: "https://creativecommons.org/licenses/by/4.0/")
                 credit("Silero VAD", "by Silero Team, for voice activity detection.", license: "MIT", url: "https://github.com/snakers4/silero-vad")
                 credit("FluidAudio", "by FluidInference, runs the models on the Neural Engine.", license: "Apache\u{00A0}2.0", url: "https://github.com/FluidInference/FluidAudio")
+                credit("fastcluster", "by Daniel Müllner and Google, part of FluidAudio.", license: "BSD\u{00A0}2-Clause", url: "https://github.com/fastcluster/fastcluster")
                 credit("Sparkle", "by the Sparkle Project, for updates.", license: "MIT", url: "https://sparkle-project.org")
             }
             .font(.caption)

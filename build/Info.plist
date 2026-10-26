@@ -32,7 +32,7 @@
   <key>LSUIElement</key>
   <true/>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © 2026 Best Boy. AGPL-3.0.</string>
+  <string>Copyright © 2026 Szymon Grącki and Tony contributors. AGPL-3.0.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Tony hears you only while you hold the dictation key. Audio stays on this Mac.</string>
   <key>NSPrincipalClass</key>
