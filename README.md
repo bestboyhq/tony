@@ -216,6 +216,8 @@ release/Tony.app/Contents/MacOS/Tony --transcribe clip.wav
 Issues and pull requests are welcome.
 Read [AGENTS.md](AGENTS.md) for the invariants and the code style, and the skill in [`.agents/skills/`](.agents/skills) for the area you touch: each one lists what dictation apps in that area usually get wrong.
 Pull request titles follow [Conventional Commits](https://www.conventionalcommits.org), and every merged `feat` or `fix` ships to users as an in-app update.
+Contributions require signing the [Contributor License Agreement](CLA.md): on your first pull request, the CLA bot asks you to, with a one-line comment.
+You keep the copyright in your work, and the agreement lets the maintainer also ship it under other license terms.
 
 ## Credits
 
@@ -223,10 +225,17 @@ Pull request titles follow [Conventional Commits](https://www.conventionalcommit
 - [Parakeet CTC 110M](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m) by NVIDIA, for your words, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 - [Silero VAD](https://github.com/snakers4/silero-vad) by Silero Team, MIT
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) by FluidInference, Apache 2.0
+- [fastcluster](https://github.com/fastcluster/fastcluster) by Daniel Müllner and Google, part of FluidAudio, BSD 2-Clause
 - [Sparkle](https://sparkle-project.org), MIT
+
+[NOTICE](NOTICE) lists each of them with its license and the notices it requires.
 
 Tony is a sibling of [Grip](https://bestboy.dev/grip), the free and open source screen recorder.
 
 ## License
 
-[AGPL-3.0](LICENSE)
+Copyright (C) 2026 Szymon Grącki and Tony contributors
+
+Licensed under [AGPL-3.0-only](LICENSE).
+As an additional term under AGPL section 7(e), the license grants no rights to the names Tony and Best Boy or their logos: [TRADEMARKS.md](TRADEMARKS.md) says how you may use them.
+Contributions require signing the [Contributor License Agreement](CLA.md).

@@ -33,16 +33,23 @@ Every domain obeys these invariants:
 
 ## License: AGPL-3.0
 
-Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
+Tony is `AGPL-3.0-only` (`LICENSE`), like Grip, `Copyright (C) 2026 Szymon Grącki and Tony contributors` (ADR 0011).
+That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadableCopyright`, `NOTICE`, the README, and the site's footer.
+"Best Boy" is a brand, not a legal entity, so it is never the copyright holder.
 
 - Check the license before adding any dependency or copying any code: it must be AGPL-compatible (MIT, BSD, ISC, zlib, Apache-2.0, MPL-2.0, LGPL, GPL-3.0, AGPL-3.0).
   GPL-2.0-only, SSPL, "source available", non-commercial, closed SDKs, and unlicensed code are out.
   Copied code keeps its notice.
+- `NOTICE` lists every third-party component Tony ships or downloads, with its license and the notices that license requires, and the app carries it in `Contents/Resources`.
+  A new dependency or model adds its section there and its credit in About.
 - Models are data, but their license binds us too: it must allow commercial use and redistribution.
   Parakeet Ultra and Parakeet CTC 110M are CC-BY-4.0, which requires credit; Silero VAD is MIT.
 - Tony ships as a Developer ID signed, notarized download that updates itself.
   The Mac App Store is out: its terms conflict with the AGPL.
-- About (a page of the menu bar panel) shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Parakeet CTC 110M (NVIDIA), Silero VAD, FluidAudio, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
+- About (a page of the menu bar panel) shows the copyright, the no-warranty notice, the license, a link to the source, and credits for Parakeet (NVIDIA, post-trained by Moondream), Parakeet CTC 110M (NVIDIA), Silero VAD, FluidAudio, fastcluster, and Sparkle: the AGPL's "Appropriate Legal Notices" plus the CC-BY credit.
+- The names Tony and Best Boy and their logos are outside the license (AGPL section 7(e)): `TRADEMARKS.md` says how others may use them.
+- Every contributor signs `CLA.md` once, with a comment the CLA bot (`.github/workflows/cla.yml`) asks for on their first pull request, so the owner can also ship contributions under other terms.
+  The bot keeps signatures on the `cla-signatures` branch; never merge it into main.
 - CI builds every release from a tagged commit, so each binary's source is public.
 - A server we write for Tony (sync, cloud features) is AGPL too, lives in this repo, and offers its source to its users (AGPL section 13).
 
@@ -70,7 +77,7 @@ Tony is `AGPL-3.0-only` (`LICENSE`), like Grip.
   `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
-- `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, and that `docs/adr/README.md` lists every ADR (Node 24).
+- `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, that `docs/adr/README.md` lists every ADR, and that About, `NOTICE`, and the copyright line agree (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.
   `npx wrangler@4 dev` serves the built site through the Worker, as on bestboy.dev.
 - `gh workflow run CI --ref main` reruns CI on `main`, its release and site deploy included, when GitHub drops a merge's push event.

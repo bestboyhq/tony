@@ -46,6 +46,8 @@ rmSync(app, { recursive: true, force: true })
 const contents = join(app, 'Contents')
 for (const dir of ['MacOS', 'Frameworks', 'Resources']) mkdirSync(join(contents, dir), { recursive: true })
 cpSync(join(products, 'Tony'), join(contents, 'MacOS', o.name))
+// The licenses travel with the binary: the AGPL asks for its text, the BSD and MIT code in Sparkle and FluidAudio for their notices.
+for (const file of ['LICENSE', 'NOTICE']) cpSync(join(root, file), join(contents, 'Resources', file))
 run('ditto', [join(products, 'Sparkle.framework'), join(contents, 'Frameworks', 'Sparkle.framework')])
 // Sparkle's update window says "Install and Relaunch". Tony is English only, so Sparkle is too, and an English table renames it.
 const english = join(contents, 'Frameworks/Sparkle.framework/Versions/B/Resources/en.lproj')
