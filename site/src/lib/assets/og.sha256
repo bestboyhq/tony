@@ -1,0 +1,23 @@
+# og.png and the files it is drawn from. `pnpm og` in site/ writes this; the tests fail when it is stale.
+4e50988f053d7e8bc087e5e93a4c69671f35703046fd77610b3b4e0ca0061307  ../.github/assets/pill.webp
+e3a8d2d7497a325b85c2e0c9d931ba1741415d23d1f828ebc5ce8c116dab44e8  node_modules/@fontsource-variable/inter/files/inter-cyrillic-ext-opsz-normal.woff2
+e1dea13a93c69f52837e370541ffe132508352666e9288ab910f2c422f4b9b50  node_modules/@fontsource-variable/inter/files/inter-cyrillic-opsz-normal.woff2
+e0f32d9ee75a83f4031e1a7bc8926f962278e282d3535be7d8dbeb3bd62914b5  node_modules/@fontsource-variable/inter/files/inter-greek-ext-opsz-normal.woff2
+93c5ac80e25cda1cf289206c724027eeb187c9d398106f0079a912cbe80616ce  node_modules/@fontsource-variable/inter/files/inter-greek-opsz-normal.woff2
+5e6d4fe9d9f4bff8b2a2469d25ab19576bb85331e22c6ed51398e16f95d56a9c  node_modules/@fontsource-variable/inter/files/inter-latin-ext-opsz-normal.woff2
+2c295d99e26dcf357d4d01bcf270fd6924b600c9a13dd8c363ef114f4c6976fa  node_modules/@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2
+935ab355938e6cd9b5fa39f2c3250ee16f3b08807c65dc4162356b50dbc8c7a2  node_modules/@fontsource-variable/inter/files/inter-vietnamese-opsz-normal.woff2
+b18a8ac2834206f36bf07f710df6f8bba30164ae242bfa290d1221e939dfb6c5  node_modules/@fontsource-variable/inter/opsz.css
+51816b2cf0d2b8cab3072218f715fc39c58d4c4b3403b4f90ab81c5d169d5671  scripts/og.ts
+2eff1e9cf068fb8521c65363bad331f94ad0fcbd8e340681ea0ac27b1433e189  src/app.css
+faa70d1b58be72091450dd9931f232e7eed6da2dc00d76531759eba5f7b2801e  src/app.html
+639880f11605d0ae5a41256e97fd89bb5bcf0462b702ab7ca08b261e741bfc88  src/lib/Arrow.svelte
+8b789c428d50de8d8f6957cf81cbe00ab75fab24d2a06b1139c56fa8083a4438  src/lib/assets/og.png
+0b42c2d2195ceec8a29deb82af9b94cfb445b5f139e5de4e1e960ab7e9acee4d  src/lib/assets/pill-still.webp
+18be452724bfdc236c074ca94a249a7f41a86752c7d04ab258ce9ed5651f6a7e  src/lib/fonts/jetbrains-mono-latin-wght-normal.woff2
+581dded623aee8114de6a1f73a653228b2549f93fef78d69ad574ac8bd773fe2  src/lib/Glow.svelte
+583780b0fc9fddcbbc38ab5c7eff5f2c1ba067f75b53c8601f3ff77da82c0820  src/lib/Hero.svelte
+333d8400f250ece827d8dabc6394f3fb845c12d6e5f16c7506d659ce83c8a0e5  src/lib/Icon.svelte
+42dfa29b208d04de1709176f1fea1a7ab6a3f9e7ec02397d5c6de8bec7a43636  src/lib/Pill.svelte
+9b9612df8ddcd9d5ca00ecd7d4bb653f68e820f1719a04e1c6551a960ce27993  src/routes/+layout.svelte
+100d4c2d9ed3667392c7174fd8ea708218dea65528c9dd1de646770d27d5fc5e  src/routes/og/+page.svelte

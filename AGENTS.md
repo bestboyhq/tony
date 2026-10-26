@@ -69,7 +69,7 @@ That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadab
 - `Sources/Tony/<Domain>/`: one folder per domain skill: `Hotkey`, `Audio`, `Speech`, `Insert`, `HUD`, `Shell`.
 - `build/`: `Tony.icon`, `Info.plist`, entitlements.
 - `scripts/`: build and release tooling.
-- `site/`: the website at [bestboy.dev/tony](https://bestboy.dev/tony), a prerendered SvelteKit site with its docs as markdown in `site/content/`, served by a Cloudflare Worker (`site/worker/`) on the route `bestboy.dev/tony*` (ADR 0009).
+- `site/`: the website at [bestboy.dev/tony](https://bestboy.dev/tony), a prerendered SvelteKit site with its docs as markdown in `site/content/`, served by a Cloudflare Worker (`site/worker/`) on the route `bestboy.dev/tony*` (ADR 0012).
 
 ## Commands
 
@@ -80,6 +80,7 @@ That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadab
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, that `docs/adr/README.md` lists every ADR, and that About, `NOTICE`, and the copyright line agree (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.
+  `pnpm og` renders the Open Graph image, `site/src/lib/assets/og.png`, from the hero in the Mac's Chrome (`CHROME` names another), and the tests fail while it is stale.
   `npx wrangler@4 dev` serves the built site through the Worker, as on bestboy.dev.
 - `gh workflow run CI --ref main` reruns CI on `main`, its release and site deploy included, when GitHub drops a merge's push event.
 - Add each new command here in the commit that adds it.
@@ -104,9 +105,10 @@ Ported from Grip, where each piece is proven.
 
 `site/` leads with talking to AI agents (Claude Code, Codex, any chat box), Tony's edge, and ranks it for free, private, offline dictation for Mac.
 
-- The site looks like bestboy.dev and Malini's site: it follows Bestboy's design (`docs/design.md` in `bestboyhq/platform`), whose tokens, bar, footer, and components it copies from Malini's `apps/site` (ADR 0009).
+- The site looks like bestboy.dev and Malini's site: it follows Bestboy's design (`docs/design.md` in `bestboyhq/platform`), whose tokens, bar, footer, and components it copies from Malini's `apps/site` (ADR 0012).
   A change to the look lands in `docs/design.md` first.
-- A user-visible feature change updates `site/content` in the same pull request, and the home page (`site/src/routes/+page.svelte`) where it names the feature.
+- A user-visible feature change updates `site/content` in the same pull request, and the home page (`site/src/routes/(site)/+page.svelte`, its hero in `site/src/lib/Hero.svelte`) where it names the feature.
+- Every page shares one Open Graph image, a render of the hero by `pnpm og`, never drawn or patched by hand: a pull request that changes what the hero shows renders it again, and the tests fail until it does (ADR 0012).
 - Every fact on the site comes from the README or the code, and the site names no competing product; speech models like Whisper and Parakeet are fine.
 - Each docs page has its own title, description, and H1, and links to the pages around it.
 - A pull request that changes only the site is titled `docs:`, so it ships no app release.

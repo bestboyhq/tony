@@ -1,14 +1,13 @@
 <script lang="ts">
-	import panelHome from '../../../.github/assets/home.webp';
-	import panelSettings from '../../../.github/assets/settings.webp';
-	import notice from '../../../.github/assets/notice.webp';
+	import panelHome from '../../../../.github/assets/home.webp';
+	import panelSettings from '../../../../.github/assets/settings.webp';
+	import notice from '../../../../.github/assets/notice.webp';
 	import Arrow from '#lib/Arrow.svelte';
 	import BeatLabel, { type Beat } from '#lib/BeatLabel.svelte';
 	import FeatureRow from '#lib/FeatureRow.svelte';
 	import Glow, { within, type Box, type Layer } from '#lib/Glow.svelte';
 	import Head from '#lib/Head.svelte';
-	import Icon from '#lib/Icon.svelte';
-	import Pill from '#lib/Pill.svelte';
+	import Hero from '#lib/Hero.svelte';
 	import SectionHeading from '#lib/SectionHeading.svelte';
 	import {
 		BESTBOY_URL,
@@ -26,7 +25,6 @@
 
 	let { data }: PageProps = $props();
 
-	const HORIZON: readonly Layer[] = [{ box: [0, -0.46, 1, 0.9], peak: [0.42, 0.86], start: 0.18 }];
 	// The close's: three colors in the glow's box. The canvas reaches a fifth of that box past it on every side
 	// (`.close .gl`), so the light fades out before the canvas ends.
 	const GLOW: Box = [1 / 7, 1 / 7, 5 / 7, 5 / 7];
@@ -197,41 +195,21 @@
 	{schema}
 />
 
-<section class="hero" aria-labelledby="hero-title">
-	<div class="wrap intro">
-		<a class="eyebrow" href={GITHUB_URL}>
-			<Icon name="github" size={14} />
-			<span>Free and open source macOS app</span>
-			<Arrow class="ahead" />
+<Hero>
+	<p class="lede">
+		<strong>Hold a key, speak your prompt, let go.</strong>
+		It lands in Claude Code, Codex, your editor, or any chat box, with your project’s names spelled right and
+		the “um” gone. Transcribed on your Mac in about 50 ms.
+	</p>
+	<div class="actions">
+		<a class="button primary" href={DOWNLOAD_URL}>
+			{@render apple()}
+			Download for macOS
 		</a>
-		<h1 id="hero-title">
-			<span>Talk to your AI agents.</span>
-			<span class="quiet">Free, private dictation for Mac.</span>
-		</h1>
-		<p class="lede">
-			<strong>Hold a key, speak your prompt, let go.</strong>
-			It lands in Claude Code, Codex, your editor, or any chat box, with your project’s names spelled right
-			and the “um” gone. Transcribed on your Mac in about 50 ms.
-		</p>
-		<div class="actions">
-			<a class="button primary" href={DOWNLOAD_URL}>
-				{@render apple()}
-				Download for macOS
-			</a>
-			<a class="button secondary" href={docHref('/docs')}>Read the docs</a>
-		</div>
-		<p class="fine">macOS 15 or later on Apple silicon · No&nbsp;account · No&nbsp;subscription</p>
+		<a class="button secondary" href={docHref('/docs')}>Read the docs</a>
 	</div>
-	<div class="plate beat">
-		<div class="horizon" aria-hidden="true"></div>
-		<div class="gl" aria-hidden="true">
-			<Glow layers={HORIZON} opacity={0.85} />
-		</div>
-		<div class="wrap window">
-			<Pill />
-		</div>
-	</div>
-</section>
+	<p class="fine">macOS 15 or later on Apple silicon · No&nbsp;account · No&nbsp;subscription</p>
+</Hero>
 
 <section id="numbers" class="beat" aria-labelledby="numbers-title">
 	<div class="wrap">
@@ -556,71 +534,7 @@
 {/snippet}
 
 <style>
-	/* The hero: an app's hero has no panel, and the painting glows behind its window, never behind text. */
-
-	.intro {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		padding-top: 72px;
-		padding-bottom: 64px;
-	}
-
-	.intro > *,
-	.window {
-		animation: blur-in calc(var(--duration) * var(--pace)) var(--enter-ease)
-			calc(var(--delay) * var(--pace)) backwards;
-	}
-
-	.eyebrow {
-		--rise: 3px;
-		--blur: 8px;
-		--duration: 1200ms;
-		--delay: 250ms;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		height: 30px;
-		padding: 0 11px 0 10px;
-		white-space: nowrap;
-		border-radius: 999px;
-		box-shadow: inset 0 0 0 1px var(--border-subtle);
-		color: var(--fg-secondary);
-		font-size: 13px;
-		font-weight: 500;
-		text-decoration: none;
-	}
-
-	.eyebrow :global(.ahead) {
-		width: 11px;
-		height: 11px;
-		color: var(--fg-faint);
-	}
-
-	.apple {
-		translate: 0 -1.5px;
-	}
-
-	h1 {
-		--rise: 4px;
-		--blur: 12px;
-		--duration: 1400ms;
-		--delay: 0ms;
-		margin-top: 24px;
-		font-size: clamp(38px, 5.2vw, 68px);
-		font-weight: 550;
-		line-height: 1.02;
-		letter-spacing: -0.04em;
-		text-wrap: balance;
-	}
-
-	h1 span {
-		display: block;
-	}
-
-	.quiet {
-		color: var(--fg-faint);
-	}
+	/* The hero's lede, buttons, and fine print, under its headline (`Hero.svelte`). */
 
 	.lede {
 		--rise: 3px;
@@ -651,6 +565,10 @@
 		margin-top: 32px;
 	}
 
+	.apple {
+		translate: 0 -1.5px;
+	}
+
 	.fine {
 		--rise: 3px;
 		--blur: 8px;
@@ -660,89 +578,6 @@
 		color: var(--fg-muted);
 		font-size: 13px;
 		line-height: 1.55;
-	}
-
-	.plate {
-		--seam: linear-gradient(
-			90deg,
-			transparent 4%,
-			#1957fa 18%,
-			#6365cd 32%,
-			#9e6594 44%,
-			#d35351 58%,
-			#ed3e11 70%,
-			#fb8400 82%,
-			transparent 96%
-		);
-		isolation: isolate;
-		padding: 64px 0;
-		background: linear-gradient(var(--panel) 0 0) 50% 0 / var(--col) 100% no-repeat;
-	}
-
-	@property --grow {
-		syntax: '<number>';
-		inherits: true;
-		initial-value: 1;
-	}
-
-	.horizon,
-	.gl {
-		position: absolute;
-		z-index: -1;
-		pointer-events: none;
-	}
-
-	.horizon {
-		inset: -46% calc(50% - var(--col) / 2) auto;
-		height: 90%;
-		background: var(--painting);
-		mask-image: radial-gradient(
-			closest-side,
-			light-dark(rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.86)) 18%,
-			transparent
-		);
-		filter: blur(48px);
-		opacity: 0.85;
-		clip-path: inset(calc(100% * 46 / 90) 0 0 0);
-		animation: swell calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
-	}
-
-	.plate .gl {
-		inset: 0 calc(50% - var(--col) / 2);
-		color: var(--panel);
-		animation: grow calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
-	}
-
-	/* The seam draws out from the middle as the light grows. */
-	.plate {
-		animation: seam calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
-	}
-
-	.window {
-		--rise: 6px;
-		--blur: 8px;
-		--duration: 1400ms;
-		--delay: 350ms;
-		position: relative;
-	}
-
-	@keyframes grow {
-		from {
-			--grow: 0;
-		}
-	}
-
-	@keyframes seam {
-		from {
-			--seam-w: 0;
-		}
-	}
-
-	@keyframes swell {
-		from {
-			opacity: 0;
-			scale: 0.6;
-		}
 	}
 
 	/* The README's images are real windows on their wallpaper, cornered 40px at their natural size. */
@@ -1225,8 +1060,11 @@
 	/* The glow drawn by WebGL, smooth where the CSS one steps; it paints its own background, so it covers the CSS
 	   glow once it draws. */
 	.close .gl {
+		position: absolute;
+		z-index: -1;
 		inset: -8% 6% -18% -4%;
 		color: var(--surface-root);
+		pointer-events: none;
 	}
 
 	.end {
@@ -1251,15 +1089,6 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.eyebrow:hover {
-			box-shadow: inset 0 0 0 1px var(--border-default);
-			color: var(--fg-default);
-		}
-
-		.eyebrow:hover :global(.ahead) {
-			translate: 2px 0;
-		}
-
 		summary:hover .plus::before,
 		summary:hover .plus::after {
 			background: var(--fg-default);
@@ -1273,10 +1102,6 @@
 	}
 
 	@media (max-width: 1023px) {
-		.intro {
-			padding-top: 56px;
-		}
-
 		.cells,
 		.panels {
 			grid-template-columns: minmax(0, 1fr);
@@ -1346,14 +1171,6 @@
 	}
 
 	@media (max-width: 639px) {
-		.plate {
-			padding: 40px 0;
-		}
-
-		.window {
-			padding-inline: 12px;
-		}
-
 		.card {
 			padding: 4px 16px 16px;
 		}
@@ -1383,19 +1200,6 @@
 		.close {
 			margin-inline: -12px;
 			padding: 40px 12px 44px;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.intro > *,
-		.window {
-			animation: fade-in 400ms ease backwards;
-		}
-
-		.horizon,
-		.gl,
-		.plate {
-			animation: none;
 		}
 	}
 </style>

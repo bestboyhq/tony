@@ -11,7 +11,7 @@ export const BESTBOY_URL = 'https://bestboy.dev';
 export const MALINI_URL = 'https://bestboy.dev/malini';
 export const GRIP_URL = 'https://bestboy.dev/grip';
 
-export const HOME = resolve('/').replace(/\/$/u, '');
+export const HOME = resolve('/(site)').replace(/\/$/u, '');
 
 export function docHref(path: string): string {
 	return `${HOME}${path}`;
