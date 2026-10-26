@@ -54,7 +54,7 @@ jobs:
       - if: ${{ !github.event.pull_request.head.repo.fork }}
         run: node scripts/update-e2e.ts
 
-  # The website in site/ builds, type-checks, and passes its tests, and each merge deploys it (ADR 0009). Cheap: Linux, no Swift.
+  # The website in site/ builds, type-checks, and passes its tests, and each merge deploys it (ADR 0012). Cheap: Linux, no Swift.
   site:
     runs-on: ubuntu-latest
     defaults:

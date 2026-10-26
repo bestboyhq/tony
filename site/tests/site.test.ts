@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { test } from 'node:test';
+import { IMAGE, SUMS, sums } from '../scripts/og.ts';
 import worker, { type Env } from '../worker/index.ts';
 
 const SITE = 'https://bestboy.dev/tony';
@@ -122,8 +123,8 @@ test('the sitemap lists every page by its canonical URL', () => {
 	assert.deepEqual(locs.toSorted(), htmlPaths.map((path) => `${SITE}${path}`).toSorted());
 });
 
-test('the 404 page is not indexed', () => {
-	assert.match(read('404.html'), /<meta name="robots" content="noindex"/u);
+test('the 404 page and the Open Graph card are not indexed', () => {
+	for (const file of ['404.html', 'og.html']) assert.match(read(file), /<meta name="robots" content="noindex"/u, file);
 });
 
 const assets: Env = {
@@ -174,12 +175,39 @@ test('every content page is prerendered as a page and as client navigation data'
 	}
 });
 
-test('every page shares the 1200x630 Open Graph image', () => {
-	const og = readFileSync(join(build, 'og.png'));
-	assert.deepEqual([og.readUInt32BE(16), og.readUInt32BE(20)], [1200, 630]);
-	for (const path of htmlPaths) {
+test('the Open Graph image is a render of the hero as it is now', () => {
+	const rendered = readFileSync(SUMS, 'utf8');
+	const now = sums();
+	const lines = (text: string): Set<string> => new Set(text.split('\n'));
+	const changed = new Set([...lines(rendered).symmetricDifference(lines(now))].map((line) => line.slice(66)));
+	assert.equal(
+		now,
+		rendered,
+		`${[...changed].join(', ')} changed since og.png was rendered: run \`pnpm og\` in site/ to render it again`,
+	);
+});
+
+test('every page shares the 1200x630 Open Graph image at a URL named by its content, and says what it shows', () => {
+	const png = readFileSync(IMAGE);
+	assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630]);
+	const headline = /<h1[^>]*>([\s\S]*?)<\/h1>/u
+		.exec(read('og.html'))?.[1]
+		?.replace(/<[^>]+>/gu, '')
+		.replace(/\s+/gu, ' ')
+		.trim();
+	assert.ok(headline);
+	for (const path of [...htmlPaths, '/404']) {
 		const html = read(htmlFile(path));
-		assert.match(html, /<meta property="og:image" content="https:\/\/bestboy\.dev\/tony\/og\.png"/u, path);
+		const [image = ''] = all(html, /<meta property="og:image" content="([^"]+)"/gu);
+		assert.match(image, /^https:\/\/bestboy\.dev\/tony\/_app\/immutable\/assets\/og\.[\w-]+\.png$/u, path);
+		assert.deepEqual(readFileSync(join(build, image.slice(SITE.length + 1))), png, path);
+		assert.deepEqual(all(html, /<meta name="twitter:image" content="([^"]+)"/gu), [image], path);
+		assert.match(html, /<meta property="og:image:width" content="1200"/u, path);
+		assert.match(html, /<meta property="og:image:height" content="630"/u, path);
 		assert.match(html, /<meta name="twitter:card" content="summary_large_image"/u, path);
+		const alts = all(html, /<meta (?:property="og:image:alt"|name="twitter:image:alt") content="([^"]+)"/gu);
+		assert.equal(alts.length, 2, path);
+		for (const alt of alts)
+			assert.ok(alt.includes(headline), `${path}: the image's alt in src/lib/Head.svelte leaves out “${headline}”`);
 	}
 });

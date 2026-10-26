@@ -1,6 +1,6 @@
 # 0009 - A prerendered website at bestboy.dev/tony
 
-Status: accepted
+Status: superseded by 0012
 
 ## Context
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { SITE_URL } from '#lib/links.ts';
+	import og from '#lib/assets/og.png';
+	import { SITE_ORIGIN, SITE_URL } from '#lib/links.ts';
 
 	type Props = {
 		title: string;
@@ -13,8 +14,10 @@
 	let { title, description, path, noindex = false, schema }: Props = $props();
 
 	const canonical = $derived(`${SITE_URL}${path}`);
-	const image = `${SITE_URL}/og.png`;
-	const imageAlt = 'Talk to your AI agents: Tony, free and private dictation for Mac, and its pill listening to a voice.';
+	// The hero, rendered by `pnpm og`. Social sites cache an image by its URL, and this one's changes with its content.
+	const image = `${SITE_ORIGIN}${og}`;
+	const imageAlt =
+		'Talk to your AI agents. Free, private dictation for Mac. Under the headline, Tony’s pill listens: its dot glows and nine bars follow a voice.';
 	// `<` escaped, so no string in the data can close the script element.
 	const jsonLd = $derived(
 		schema &&

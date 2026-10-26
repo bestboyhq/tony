@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { MediaQuery } from 'svelte/reactivity';
-	import still from '#lib/assets/pill-still.webp';
+	import frame from '#lib/assets/pill-still.webp';
 	import moving from '../../../.github/assets/pill.webp';
 
 	// The README's loop is 1.7 MB, so its first frame paints with the page, and the loop lays over it once the
-	// page has loaded and the loop is decoded. Reduce Motion and Save-Data keep the still.
+	// page has loaded and the loop is decoded. Reduce Motion, Save-Data, and `still` keep the first frame.
+	let { still = false }: { still?: boolean } = $props();
+
 	const motion = new MediaQuery('prefers-reduced-motion: no-preference', false);
 	let loaded = $state(false);
 
 	$effect(() => {
 		const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-		if (!motion.current || loaded || connection?.saveData) return;
+		if (still || !motion.current || loaded || connection?.saveData) return;
 		let gone = false;
 		function load() {
 			const image = new Image();
@@ -33,7 +35,7 @@
 
 <div class="pill">
 	<img
-		src={still}
+		src={frame}
 		width="1200"
 		height="362"
 		alt="Tony's pill listening: its blue-to-orange dot glows and nine bars follow a voice."
