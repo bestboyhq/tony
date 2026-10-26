@@ -50,6 +50,7 @@ That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadab
 - The names Tony and Best Boy and their logos are outside the license (AGPL section 7(e)): `TRADEMARKS.md` says how others may use them.
 - Every contributor signs `CLA.md` once, with a comment the CLA bot (`.github/workflows/cla.yml`) asks for on their first pull request, so the owner can also ship contributions under other terms.
   The bot keeps signatures on the `cla-signatures` branch; never merge it into main.
+  The `main` ruleset requires its check, `cla`, by the job's id, so renaming the job blocks every pull request.
 - CI builds every release from a tagged commit, so each binary's source is public.
 - A server we write for Tony (sync, cloud features) is AGPL too, lives in this repo, and offers its source to its users (AGPL section 13).
 

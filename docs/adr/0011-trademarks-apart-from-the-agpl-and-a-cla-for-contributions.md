@@ -17,6 +17,8 @@ The AGPL's notices, and the BSD and MIT code inside Sparkle and FluidAudio, requ
 - Contributions require the Contributor License Agreement in `CLA.md`, adapted from the Apache Individual CLA v2.2: contributors keep their copyright and grant the maintainer, or a successor such as a company he founds, a license to distribute their work under any terms.
 - `.github/workflows/cla.yml` collects signatures with CLA Assistant Lite (`contributor-assistant/github-action`, pinned to v2.6.1, its last release): a contributor signs with a comment on their first pull request, and the signatures live in `signatures/cla.json` on the `cla-signatures` branch, apart from main and its branch protection.
   The workflow creates that branch on its first run, since the action fails when the file does not exist yet, and allowlists `szymeo` and bots.
+- The `main` ruleset, `main: CI must pass`, requires the bot's check, `cla`, next to `test` and `conventional`, with no bypass.
+  The check joins the ruleset only once `cla.yml` is on main: `pull_request_target` runs the workflow from main, so the pull request that adds it never gets the check and would wait on it forever.
 - `NOTICE` lists every third-party component Tony ships or downloads, with its license and the notices that license requires, and `scripts/package.ts` copies it and `LICENSE` into the app's `Contents/Resources`.
   About credits the same components.
 
@@ -24,7 +26,8 @@ The AGPL's notices, and the BSD and MIT code inside Sparkle and FluidAudio, requ
 
 - Forks stay free to use the code, and need their own name and icon.
 - The maintainer can ship contributions in closed products and relicense Tony, while the public code stays AGPL.
-- A first-time contributor signs once before their pull request can merge, and the CLA check fails until they do.
+- A first-time contributor signs once before their pull request can merge: the ruleset holds it until the `cla` check passes, which the bot reruns once they sign.
+- The ruleset names the check by the job's id, so renaming the job blocks every pull request until the ruleset follows.
 - CLA Assistant Lite is archived, so a GitHub change that breaks it gets no fix upstream; the replacement is a fork of the action or the hosted CLA Assistant.
 - A new dependency or model adds a section to `NOTICE` and a credit to About.
   `scripts/notice.test.ts` fails when About and `NOTICE` credit different components, when a pin in `Package.resolved` is missing from `NOTICE`, or when a file loses the copyright line.

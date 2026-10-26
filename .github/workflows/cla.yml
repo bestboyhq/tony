@@ -15,6 +15,7 @@ permissions:
   statuses: write
 
 jobs:
+  # The main ruleset requires this job's check by its id, cla: a new id or a name blocks every pull request until the ruleset follows.
   cla:
     # pull_request_target runs with write access, so nothing here checks out or runs the pull request's code.
     if: >-
