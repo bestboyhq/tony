@@ -152,7 +152,7 @@ There is no account, and crash reports stay on your Mac.
 
 Tony shares usage stats, like a finished dictation and how long it was, so we see what to make better.
 Never what you say or type, and never which app: only numbers, yes-or-no flags, and Tony's own names, like the key you hold.
-Onboarding says so in one line, and Settings turns them off, which sends one last stat saying so.
+Onboarding says so: turn it off in Settings, and Tony sends one last stat saying so, then nothing.
 They go to bestboy.dev with no account or ID, which passes them on to Logdash: it counts events and people per day, and follows nobody.
 Your stats in the menu bar are separate, and stay on your Mac.
 [docs/adr/0013](docs/adr/0013-usage-counts-through-bestboy-dev.md) lists every one.

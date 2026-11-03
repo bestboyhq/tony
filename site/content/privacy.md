@@ -23,8 +23,8 @@ There is no account, and crash reports stay on your Mac.
 
 Tony shares usage stats, like a finished dictation and how long it was, so we see what to make better.
 Never what you say or type, and never which app.
-A line in onboarding says so, and [Settings](/tony/docs/settings.md#share-usage-stats) turns them off.
-Turning off Share usage stats sends one last stat saying so, and then Tony sends nothing.
+Onboarding says so, under "Meet Tony".
+Turn it off in [Settings](/tony/docs/settings.md#share-usage-stats): Tony sends one last stat saying so, and then nothing.
 They are not your stats in the menu bar, which stay on your Mac.
 
 Each stat is one event, with numbers, yes-or-no flags, and Tony's own names only:
@@ -35,7 +35,7 @@ Each stat is one event, with numbers, yes-or-no flags, and Tony's own names only
 - **A dictation finished**: the seconds you spoke, the word count rounded down to one digit (14 words count as 10), the time from key up to text, and whether it was hands-free.
 - **Your words added**: how many you have, never which.
 - **Your key changed**, and its name, like Right ⌥.
-- **Usage stats turned off**, once, as you turn them off, with nothing else.
+- **Usage stats turned off**, once, as you turn it off, with nothing else.
 
 Never sent: what you say or type, your audio, which app the text went to, your words, your mic's name, or any file path or name.
 
@@ -49,7 +49,7 @@ Tony goes online for four things only:
 1. **The speech model, once.** Parakeet Ultra, about 600 MB, from Hugging Face on first launch.
 2. **The model for your words, once.** Parakeet CTC 110M, about 100 MB, the first time you add [your words](/tony/docs/your-words.md).
 3. **Update checks.** Tony reads its update feed on GitHub Releases at launch, every four hours, and when your Mac wakes.
-4. **Usage stats.** One small call to bestboy.dev as each one happens, unless you turn them off.
+4. **Usage stats.** One small call to bestboy.dev as each one happens, unless you turn it off in Settings.
 
 Once the models are on your Mac, dictation needs no connection at all.
 Turn off Wi-Fi and Tony keeps typing; a stat made offline is dropped.

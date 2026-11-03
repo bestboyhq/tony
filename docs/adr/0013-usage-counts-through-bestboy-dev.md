@@ -34,9 +34,9 @@ What 0001 promised about audio and text still holds, and this record restates it
 - On until turned off: `Prefs.usageCounts` is true until the user turns off Share usage stats in Settings.
   `Usage.share` sends `tony_stats_off` before it flips the switch, and nothing is sent while it is off.
   Turning it back on sends nothing extra and asks nothing.
-- Said, not asked, in fine print (12 pt, secondary) at the very bottom of the onboarding window, under its buttons, in the same spot on every step: "Tony shares usage stats, never what you say or type. Settings turns them off."
-  At 12 pt it is wider than the 440 pt window, so it breaks into two centered lines between its sentences.
-  No page, window, heading, or button of its own; whoever onboarded before sees nothing new, and the switch and the privacy page cover them.
+- Said, not asked, at the end of the description under "Meet Tony", which onboarding shows on every step: "Hold fn, speak, and let go. Your words land where the cursor is. Tony shares usage stats, never what you say or type. Turn it off in Settings."
+  It is part of the existing design, one sentence per line like the rest: no page, window, heading, button, or fine print of its own.
+  Whoever onboarded before sees nothing new; the switch and the privacy page cover them.
 - A development build (version 0.0.0) sends only to `TONY_EVENTS_URL`, a local stand-in for the relay, and nothing without it.
 
 ## Consequences

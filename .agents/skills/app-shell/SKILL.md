@@ -34,9 +34,8 @@ The native macOS app around everything else.
 - Usage stats (ADR 0013): `Usage.count` sends one event at a time to bestboy.dev's relay, which passes it to Logdash, so Tony holds no key.
   Counts, flags, and Tony's own names only: never what was said or typed, which app, the user's words, a device's name, or a path.
   A count never waits: a failed or slow call is dropped, so it never delays a dictation.
-  On until Share usage stats in Settings turns them off; `Usage.share` sends one last `tony_stats_off` before the switch flips, and turning it back on sends nothing extra and asks nothing.
-  Said, not asked: fine print at the very bottom of the onboarding window, under its buttons, in the same spot on every step, and nothing new for whoever onboarded before; no page, window, or button of its own.
-  The Done button holds its place, hidden, before the last step, so the row above the fine print never changes height.
+  On until the user turns it off in Settings (Share usage stats); `Usage.share` sends one last `tony_stats_off` before the switch flips, and turning it back on sends nothing extra and asks nothing.
+  Said, not asked: the end of onboarding's "Meet Tony" description says "Tony shares usage stats, never what you say or type. Turn it off in Settings.", on every step, and whoever onboarded before sees nothing new; no page, window, button, or fine print of its own.
   A development build sends only to `TONY_EVENTS_URL`.
 - Launch at login through `SMAppService`, offered in onboarding and on by default.
 - Updates with Sparkle 2.

@@ -3,7 +3,7 @@ import Foundation
 /// Usage counts (ADR 0013): what Tony did, like a finished dictation and how long it was, never what was said or
 /// typed, the audio, which app the text went to, the user's words, or any path or name. Each count goes on its own
 /// to the Bestboy platform's relay, which passes it to Logdash, so Tony talks only to bestboy.dev and holds no key.
-/// On until Settings turns them off; a line of fine print in onboarding says so.
+/// On until turned off in Settings; onboarding's description says so.
 enum Usage {
     static let relay = URL(string: "https://bestboy.dev/api/events")!
     /// A development build (0.0.0) sends only to `TONY_EVENTS_URL`, a local stand-in for the relay.

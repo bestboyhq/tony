@@ -179,7 +179,7 @@
 		},
 		{
 			title: 'No account',
-			body: 'Tony goes online only to download its models once, to check for updates, and to share usage stats, never what you say or type. Settings turns them off.',
+			body: 'Tony goes online only to download its models once, to check for updates, and to share usage stats, never what you say or type. Turn it off in Settings.',
 		},
 		{
 			title: 'Open source',

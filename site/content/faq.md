@@ -33,7 +33,7 @@ Tony's stats are counts, never what you said.
 
 Yes, usage stats, like a finished dictation and how long it was, so we see what to make better.
 Never what you say or type, and never which app.
-Settings turns them off: Tony sends one last stat saying so, and then nothing.
+Turn it off in Settings: Tony sends one last stat saying so, and then nothing.
 See [Privacy and offline use](/tony/docs/privacy.md#usage-stats) for every one.
 
 ## Which Macs does Tony run on?
