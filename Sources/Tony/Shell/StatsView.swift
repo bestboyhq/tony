@@ -194,36 +194,46 @@ private struct Activity: View {
 }
 
 /// The apps that got the most words.
-private struct Apps: View {
+struct Apps: View {
     let apps: [String: Int]
 
+    /// One row per name, most words first: a development build and its release are one app to the user, shown with
+    /// the bundle ID, and so the icon, of the one used most.
+    static func rows(_ apps: [String: Int], name: (String) -> String) -> [(id: String, name: String, words: Int)] {
+        Dictionary(grouping: apps.sorted { $0.value > $1.value }, by: { name($0.key) })
+            .map { (id: $0.value[0].key, name: $0.key, words: $0.value.reduce(0) { $0 + $1.value }) }
+            .sorted { $0.words != $1.words ? $0.words > $1.words : $0.name < $1.name }
+    }
+
     var body: some View {
-        let top = apps.sorted { $0.value > $1.value }.prefix(4)
-        let peak = Double(top.first?.value ?? 1)
+        let top = Self.rows(apps) { id in
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: id).map { FileManager.default.displayName(atPath: $0.path) } ?? id
+        }.prefix(4)
+        let peak = Double(top.first?.words ?? 1)
         VStack(alignment: .leading, spacing: 8) {
             Text("Where you dictate").font(.caption.weight(.medium)).foregroundStyle(.secondary)
-            ForEach(Array(top), id: \.key) { app in
-                let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.key)
+            ForEach(Array(top), id: \.name) { app in
+                let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.id)
                 HStack(spacing: 8) {
                     Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .application))
                         .resizable()
                         .frame(width: 16, height: 16)
-                    Text(url.map { FileManager.default.displayName(atPath: $0.path) } ?? app.key)
+                    Text(app.name)
                         .lineLimit(1)
                         .frame(width: 110, alignment: .leading)
                     GeometryReader { geometry in
                         Capsule()
                             .fill(StatsView.tint)
-                            .frame(width: max(6, geometry.size.width * Double(app.value) / peak))
+                            .frame(width: max(6, geometry.size.width * Double(app.words) / peak))
                     }
                     .frame(height: 6)
-                    Text(app.value.formatted())
+                    Text(app.words.formatted())
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .frame(width: 52, alignment: .trailing)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(url.map { FileManager.default.displayName(atPath: $0.path) } ?? app.key): \(app.value) words")
+                .accessibilityLabel("\(app.name): \(app.words) words")
             }
         }
     }

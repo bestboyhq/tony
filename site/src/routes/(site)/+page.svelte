@@ -178,8 +178,8 @@
 			body: 'Audio stays in memory and is never written to disk. Once the model is downloaded, Tony dictates offline.',
 		},
 		{
-			title: 'No account, no telemetry',
-			body: 'Tony goes online only to download its models once and to check for updates. Your stats are counts, never what you said.',
+			title: 'No account',
+			body: 'Tony goes online only to download its models once, to check for updates, and to share usage stats, never what you say or type. Settings turns them off.',
 		},
 		{
 			title: 'Open source',

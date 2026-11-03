@@ -108,7 +108,7 @@ Click Tony in the menu bar for a glass panel with everything Tony did for you, y
 - **Words dictated, and the time they saved you:** typing them at 40 words a minute, an average speed, minus the time you spent saying them.
 - **Pace, speed, and streak.** How fast you speak, how long your text takes to land after you let go, and how many days in a row you have dictated, with your longest on hover.
 - **Six months at a glance.** Every day you dictated, in a grid like GitHub's contributions, in Tony's orange.
-- **Where you dictate.** The apps that got the most of your words.
+- **Where you dictate.** The apps that got the most of your words, apps of the same name as one.
 - **The small wins.** How many fillers Tony took out, and how often it spelled your words your way.
 - **Your last dictation,** one click from Copy, or Paste again where you are now.
 - **Settings and About live here too.** Right-click the icon for a classic menu, or open Tony from Spotlight to bring up the panel.
@@ -148,8 +148,16 @@ Never what you said.
 ## Private
 
 Audio and text stay on your Mac, and audio stays in memory: it is never written to disk.
-There is no account and no telemetry.
-Tony goes online only to download the speech model once (about 600 MB), the model for your words once (about 100 MB) if you add any, and to check for updates.
+There is no account, and crash reports stay on your Mac.
+
+Tony shares usage stats, like a finished dictation and how long it was, so we see what to make better.
+Never what you say or type, and never which app: only numbers, yes-or-no flags, and Tony's own names, like the key you hold.
+Onboarding says so in one line, and Settings turns them off, which sends one last stat saying so.
+They go to bestboy.dev with no account or ID, which passes them on to Logdash: it counts events and people per day, and follows nobody.
+Your stats in the menu bar are separate, and stay on your Mac.
+[docs/adr/0013](docs/adr/0013-usage-counts-through-bestboy-dev.md) lists every one.
+
+Tony goes online only to download the speech model once (about 600 MB), the model for your words once (about 100 MB) if you add any, to check for updates, and to share those usage stats.
 
 ## Use it
 

@@ -20,14 +20,21 @@ See [Prompting AI agents](/tony/docs/ai-agents.md).
 
 Yes.
 Tony downloads its speech model once, about 600 MB, and from then on it transcribes on your Mac with no connection.
-It goes online only for that download, the model for your words if you add any, and update checks.
+It goes online only for that download, the model for your words if you add any, update checks, and usage stats.
 See [Privacy and offline use](/tony/docs/privacy.md).
 
 ## Does my voice leave my Mac?
 
 No.
-Audio stays in memory on your Mac and is never written to disk, and there is no account and no telemetry.
+Audio stays in memory on your Mac and is never written to disk, and there is no account.
 Tony's stats are counts, never what you said.
+
+## Does Tony send usage data?
+
+Yes, usage stats, like a finished dictation and how long it was, so we see what to make better.
+Never what you say or type, and never which app.
+Settings turns them off: Tony sends one last stat saying so, and then nothing.
+See [Privacy and offline use](/tony/docs/privacy.md#usage-stats) for every one.
 
 ## Which Macs does Tony run on?
 

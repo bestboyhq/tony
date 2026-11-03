@@ -27,7 +27,7 @@ Open Tony from Spotlight or Finder while it runs, and the panel comes up.
 - **Streak,** how many days in a row you have dictated, with your longest on hover.
 - **Six months at a glance.** Every day you dictated, in a grid like GitHub's contributions, in Tony's orange.
   Hover a day for its word count.
-- **Where you dictate.** The four apps that got the most of your words.
+- **Where you dictate.** The four apps that got the most of your words, apps of the same name as one.
 - **The small wins.** How many dictations, how many fillers Tony took out, and how often it spelled your words your way.
 
 Stats are counts by day and by app, kept in one small file on your Mac.

@@ -2,8 +2,9 @@ import ServiceManagement
 import SwiftUI
 
 /// From install to a first dictation in a minute, without docs. One step at a time: the first one left is
-/// open, the rest are a line each. It asks for the key first, then each permission just in time with a
-/// one-line reason; the model downloads meanwhile; a practice field ends it with a first dictation.
+/// open, the rest are a line each. It asks for the key first, then for each permission just in time with a
+/// one-line reason; the model downloads meanwhile; a practice field ends it with a first dictation. A line of fine
+/// print under the steps says that Tony shares usage stats.
 struct OnboardingView: View {
     let permissions: Permissions
     let speech: Speech
@@ -32,97 +33,113 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 8) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .frame(width: 88, height: 88)
-                Text("Meet Tony")
-                    .font(.system(size: 26, weight: .bold))
-                Text("Hold \(key), speak, and let go.\nYour words land where the cursor is.")
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        VStack(spacing: 14) {
+            VStack(spacing: 20) {
+                VStack(spacing: 8) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .frame(width: 88, height: 88)
+                    Text("Meet Tony")
+                        .font(.system(size: 26, weight: .bold))
+                    Text("Hold \(key), speak, and let go.\nYour words land where the cursor is.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-            VStack(spacing: 0) {
-                StepRow(number: 1, title: "Your key", done: keyDone, open: current == .key) {
-                    Text("Which key will you hold to talk?")
-                    HotkeyPicker(hotkey: hotkey)
-                    FnWarning()
-                    Button("Continue") { keyDone = true }
-                        .buttonStyle(.borderedProminent)
-                }
-                Divider()
-                StepRow(number: 2, title: "Microphone", done: permissions.microphone == .authorized, open: current == .microphone) {
-                    Text(permissions.microphone == .notDetermined ? "So Tony hears you while you hold the key." : "Turn on Tony in Privacy & Security > Microphone.")
-                    Button(permissions.microphone == .notDetermined ? "Allow" : "Open System Settings") { permissions.requestMicrophone() }
-                        .buttonStyle(.borderedProminent)
-                }
-                Divider()
-                StepRow(number: 3, title: "Accessibility", done: accessibilityDone, open: current == .accessibility) {
-                    if permissions.needsRelaunch {
-                        Text("Allowed. macOS needs Tony to restart to use it.")
-                        Button("Relaunch") { Permissions.relaunch() }
-                            .buttonStyle(.borderedProminent)
-                    } else {
-                        Text("So Tony notices the key and types for you.")
-                        Button("Allow") { permissions.requestAccessibility() }
+                VStack(spacing: 0) {
+                    StepRow(number: 1, title: "Your key", done: keyDone, open: current == .key) {
+                        Text("Which key will you hold to talk?")
+                        HotkeyPicker(hotkey: hotkey)
+                        FnWarning()
+                        Button("Continue") { keyDone = true }
                             .buttonStyle(.borderedProminent)
                     }
-                }
-                Divider()
-                StepRow(number: 4, title: "Speech model", done: speech.isReady, open: current == .model, status: modelStatus) {
-                    if case let .failed(message) = speech.state {
-                        Text(message)
-                        Button("Try Again") { Task { await speech.prepare() } }
+                    Divider()
+                    StepRow(number: 2, title: "Microphone", done: permissions.microphone == .authorized, open: current == .microphone) {
+                        Text(permissions.microphone == .notDetermined ? "So Tony hears you while you hold the key." : "Turn on Tony in Privacy & Security > Microphone.")
+                        Button(permissions.microphone == .notDetermined ? "Allow" : "Open System Settings") { permissions.requestMicrophone() }
                             .buttonStyle(.borderedProminent)
-                    } else {
-                        Text("Runs on this Mac. Your voice never leaves it.")
-                        // nil while loading: the bar sweeps, as compiling reports no progress.
-                        let progress: Double? = if case let .downloading(progress) = speech.state { progress } else { nil }
-                        ProgressView(value: progress) {
-                            EmptyView()
-                        } currentValueLabel: {
-                            Text(progress == nil ? "Preparing it for this Mac's Neural Engine…" : downloading)
+                    }
+                    Divider()
+                    StepRow(number: 3, title: "Accessibility", done: accessibilityDone, open: current == .accessibility) {
+                        if permissions.needsRelaunch {
+                            Text("Allowed. macOS needs Tony to restart to use it.")
+                            Button("Relaunch") { Permissions.relaunch() }
+                                .buttonStyle(.borderedProminent)
+                        } else {
+                            Text("So Tony notices the key and types for you.")
+                            Button("Allow") { permissions.requestAccessibility() }
+                                .buttonStyle(.borderedProminent)
                         }
                     }
+                    Divider()
+                    StepRow(number: 4, title: "Speech model", done: speech.isReady, open: current == .model, status: modelStatus) {
+                        if case let .failed(message) = speech.state {
+                            Text(message)
+                            Button("Try Again") { Task { await speech.prepare() } }
+                                .buttonStyle(.borderedProminent)
+                        } else {
+                            Text("Runs on this Mac. Your voice never leaves it.")
+                            // nil while loading: the bar sweeps, as compiling reports no progress.
+                            let progress: Double? = if case let .downloading(progress) = speech.state { progress } else { nil }
+                            ProgressView(value: progress) {
+                                EmptyView()
+                            } currentValueLabel: {
+                                Text(progress == nil ? "Preparing it for this Mac's Neural Engine…" : downloading)
+                            }
+                        }
+                    }
+                    Divider()
+                    StepRow(number: 5, title: "Your words", done: wordsDone, open: current == .words) {
+                        Text("Names, brands, and jargon, spelled your way. Optional.")
+                        WordsField(speech: speech)
+                        WordsFooter(speech: speech, detail: "Press Return after each one.")
+                        Button("Continue") { wordsDone = true }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    Divider()
+                    StepRow(number: 6, title: "Try it", done: false, open: current == .practice) {
+                        Text("Hold \(key), say “Hello, Tony,” and let go.")
+                        FnWarning()
+                        TextField("Your first dictation lands here", text: $practice, axis: .vertical)
+                            .font(.system(size: 13))
+                            .lineLimit(2...4)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($practiceFocused)
+                            .onAppear { practiceFocused = true }
+                    }
                 }
-                Divider()
-                StepRow(number: 5, title: "Your words", done: wordsDone, open: current == .words) {
-                    Text("Names, brands, and jargon, spelled your way. Optional.")
-                    WordsField(speech: speech)
-                    WordsFooter(speech: speech, detail: "Press Return after each one.")
-                    Button("Continue") { wordsDone = true }
-                        .buttonStyle(.borderedProminent)
-                }
-                Divider()
-                StepRow(number: 6, title: "Try it", done: false, open: current == .practice) {
-                    Text("Hold \(key), say “Hello, Tony,” and let go.")
-                    FnWarning()
-                    TextField("Your first dictation lands here", text: $practice, axis: .vertical)
-                        .font(.system(size: 13))
-                        .lineLimit(2...4)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($practiceFocused)
-                        .onAppear { practiceFocused = true }
-                }
-            }
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            HStack {
-                Toggle("Open Tony at login", isOn: $launchAtLogin)
-                Spacer()
-                // Before the last step there is only closing the window: the menu bar icon shows the download.
-                if current == .practice {
+                HStack {
+                    Toggle("Open Tony at login", isOn: $launchAtLogin)
+                    Spacer()
+                    // Before the last step there is only closing the window: the menu bar icon shows the download.
+                    // Held in place meanwhile, so the row keeps its height and the line under it never moves.
                     Button("Done", action: done)
                         .keyboardShortcut(practice.isEmpty ? nil : .defaultAction)
+                        .opacity(current == .practice ? 1 : 0)
+                        .disabled(current != .practice)
+                        .accessibilityHidden(current != .practice)
                 }
             }
+
+            // Said, not asked: fine print at the very bottom, on every step, and Settings has the switch. Too wide for
+            // one line at 12 pt in this window, so it breaks between its sentences.
+            Text("Tony shares usage stats, never what you say or type.\nSettings turns them off.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(28)
+        .padding([.top, .horizontal], 28)
+        .padding(.bottom, 14)
         .frame(width: 440)
-        .onDisappear { LoginItem.set(launchAtLogin) }  // Done, or the window closed
+        .onDisappear {  // Done, or the window closed
+            LoginItem.set(launchAtLogin)
+            Usage.count("onboarding_finished", ["step": "\(current)", "practiced": !practice.isEmpty])
+        }
     }
 
     /// "Downloading, 38% · ~2min left", once the pace is known.

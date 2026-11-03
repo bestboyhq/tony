@@ -62,6 +62,7 @@ final class Speech {
         default: return
         }
         let started = Date()
+        let downloading = !AsrModels.modelsExist(at: AsrModels.defaultCacheDirectory(for: Self.version), version: Self.version)
         do {
             state = .downloading(0)
             downloadStarted = Date()
@@ -89,6 +90,7 @@ final class Speech {
             self.asr = asr
             self.vad = vad
             state = .ready
+            if downloading { Usage.count("model_downloaded", ["seconds": Int(Date().timeIntervalSince(started).rounded())]) }
             log.info("speech ready in \(Date().timeIntervalSince(started), format: .fixed(precision: 1)) s")
         } catch {
             log.error("speech failed: \(error.localizedDescription, privacy: .public)")
