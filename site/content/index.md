@@ -9,7 +9,7 @@ Hold a key, speak, and let go: a message, a note, or a prompt for your AI agent.
 Tony transcribes on your Mac's Neural Engine with Parakeet Ultra, one of the most accurate open speech models there is, and types the result into whatever app you are in.
 A sentence takes about 50 ms, and your voice never leaves the Mac.
 
-Tony is free and open source under AGPL-3.0, with no account and no telemetry.
+Tony is free and open source under AGPL-3.0, with no account, and its usage stats never hold what you say.
 It needs macOS 15 or later on Apple silicon.
 
 ## Hold a key, speak, let go
@@ -68,7 +68,7 @@ fn down → event tap → other audio fades, media pauses
 
 - [Install and permissions](/tony/docs/install.md): download Tony, allow the microphone and Accessibility, and dictate for the first time.
 - [Prompting AI agents](/tony/docs/ai-agents.md): talk to Claude Code, Codex, or any agent in your terminal, your editor, or a chat box.
-- [Privacy and offline use](/tony/docs/privacy.md): what stays on your Mac, and the three times Tony goes online.
+- [Privacy and offline use](/tony/docs/privacy.md): what stays on your Mac, what its usage stats hold, and the four times it goes online.
 - [Languages](/tony/docs/languages.md): the 25 languages Tony speaks, and switching between them mid-dictation.
 - [Your words](/tony/docs/your-words.md): names, brands, and jargon, spelled your way.
 - [Speed and accuracy](/tony/docs/speed-and-accuracy.md): how fast Tony transcribes, and how often it gets a word wrong.

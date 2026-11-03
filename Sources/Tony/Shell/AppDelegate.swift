@@ -99,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { await speech.prepare() }
         Task { await speech.learn(Prefs.words) }
 
+        Usage.count("launched", ["onboarded": Prefs.onboarded])
         // Once onboarded, a missing permission is explained in the HUD and the menu instead.
         if !Prefs.onboarded { showOnboarding() }
     }

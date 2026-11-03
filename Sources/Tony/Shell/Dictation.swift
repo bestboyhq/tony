@@ -159,6 +159,7 @@ final class Dictation {
         let generation = generation
         let keyUp = ContinuousClock.now
         let spoken = keyDown.duration(to: keyUp)
+        let handsFree = handsFree
         phase = .transcribing
         let heard = hear()
         self.heard = heard
@@ -168,7 +169,7 @@ final class Dictation {
             let text = Cleanup.removeFillers(raw)
             let before = await cursor?.value ?? nil
             guard !Task.isCancelled else { return }
-            defer { if !text.isEmpty { record(raw: raw, text: text, spoken: spoken, keyUp: keyUp) } }
+            defer { if !text.isEmpty { record(raw: raw, text: text, spoken: spoken, keyUp: keyUp, handsFree: handsFree) } }
             guard self.generation == generation else {
                 // A newer dictation is listening: land this one, and leave the HUD to the new one.
                 if !text.isEmpty {
@@ -262,10 +263,11 @@ final class Dictation {
     }
 
     /// Counts a dictation once its text is handed to the app, or kept for the user when it can't be.
-    private func record(raw: String, text: String, spoken: Duration, keyUp: ContinuousClock.Instant) {
-        stats.record(raw: raw, text: text, yourWords: Prefs.words, seconds: spoken / .seconds(1),
-                     latency: Int(keyUp.duration(to: .now) / .milliseconds(1)), app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+    private func record(raw: String, text: String, spoken: Duration, keyUp: ContinuousClock.Instant, handsFree: Bool) {
+        let seconds = spoken / .seconds(1), latency = Int(keyUp.duration(to: .now) / .milliseconds(1))
+        stats.record(raw: raw, text: text, yourWords: Prefs.words, seconds: seconds, latency: latency, app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         stats.save()
+        Usage.count("dictation_finished", Usage.dictation(text: text, seconds: seconds, latency: latency, handsFree: handsFree))
     }
 
     /// Pastes the last dictation again, from the menu.

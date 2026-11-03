@@ -5,7 +5,7 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 
 | #                                                                          | Decision                                                                                                 |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [0001](0001-local-only-and-private.md)                                     | No backend, account, or telemetry; audio in memory; online only for model downloads and update checks    |
+| [0001](0001-local-only-and-private.md)                                     | Superseded by 0013: no backend, account, or telemetry; audio in memory; online for downloads, updates    |
 | [0002](0002-native-swift-and-swiftpm-only.md)                              | Swift 6, SwiftUI and AppKit, `MainActor` by default; `Package.swift` is the only project file            |
 | [0003](0003-on-device-speech-with-parakeet.md)                             | Parakeet Ultra, Silero VAD, and Parakeet CTC 110M through FluidAudio on the Neural Engine                |
 | [0004](0004-agpl-and-a-developer-id-download.md)                           | `AGPL-3.0-only`, shipped as a signed, notarized download, never through the Mac App Store                |
@@ -17,3 +17,4 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0010](0010-fluidaudio-from-our-fork-for-per-language-letters.md)          | FluidAudio from `bestboyhq/FluidAudio`, which keeps Parakeet to the letters of the user's languages      |
 | [0011](0011-trademarks-apart-from-the-agpl-and-a-cla-for-contributions.md) | Copyright with Szymon Grącki and contributors; names under `TRADEMARKS.md`, contributions under `CLA.md` |
 | [0012](0012-the-sites-open-graph-image-is-a-render-of-its-hero.md)         | 0009's site; its Open Graph image is a render of the hero, checked by a test, at a content-named URL     |
+| [0013](0013-usage-counts-through-bestboy-dev.md)                           | 0001's privacy, plus usage counts through bestboy.dev, on unless turned off, never what was said         |

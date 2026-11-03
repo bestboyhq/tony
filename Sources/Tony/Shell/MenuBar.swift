@@ -199,6 +199,9 @@ private struct MenuBarView: View {
             }
         }
         .frame(width: 391)  // the activity grid's 26 weeks, edge to edge
+        // The panel holds the keyboard while Tony stays inactive: its controls are live, so they draw as live,
+        // not grey like a window in the background.
+        .environment(\.controlActiveState, .key)
         .modifier(PanelBackground())
     }
 }

@@ -1,6 +1,6 @@
 # 0001 - Local only and private
 
-Status: accepted
+Status: superseded by 0013
 
 ## Context
 

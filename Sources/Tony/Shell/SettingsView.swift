@@ -2,7 +2,8 @@ import Carbon.HIToolbox
 import FluidAudio
 import SwiftUI
 
-/// Options exist only where people really differ: the key, the mic, the language, the words.
+/// Options exist only where people really differ: the key, the mic, the language, the words. And usage stats,
+/// which are the user's to turn off (ADR 0013).
 struct SettingsView: View {
     let dictation: Dictation
     let speech: Speech
@@ -11,6 +12,7 @@ struct SettingsView: View {
     @State private var languages = Prefs.languages
     @State private var devices = Devices.inputs()
     @State private var launchAtLogin = LoginItem.isOn
+    @AppStorage(Prefs.usageCountsKey) private var usageCounts = true
 
     var body: some View {
         Form {
@@ -60,6 +62,16 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Share usage stats", isOn: Binding(get: { usageCounts }, set: { Usage.share($0) }))
+            } footer: {
+                Text("Like a finished dictation and how long it was. Never what you say or type, and never which app.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Section {
                 Toggle("Open at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { LoginItem.set(launchAtLogin) }
                 LabeledContent("Version \(Bundle.main.version)") {
@@ -94,7 +106,8 @@ struct SettingsView: View {
 }
 
 extension Bundle {
-    var version: String { object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
+    /// 0.0.0 for a development build, bundled by `scripts/package.ts` or not.
+    var version: String { object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0" }
 }
 
 /// The key held to talk: a modifier from the list, or Other… and a press of any modifier. The tap gets it at once.
@@ -129,7 +142,11 @@ struct HotkeyPicker: View {
         }
         .labelsHidden()
         .fixedSize()
-        .onChange(of: hotkeyCode) { hotkey.setKey(HotkeyKey(keyCode: UInt16(hotkeyCode))) }
+        .onChange(of: hotkeyCode) {
+            let key = HotkeyKey(keyCode: UInt16(hotkeyCode))
+            hotkey.setKey(key)
+            Usage.count("hotkey_changed", ["key": key.name])
+        }
         .onDisappear { stopRecording() }
     }
 
@@ -244,6 +261,7 @@ struct WordsField: View {
         var seen = Set<String>()
         let list = list.filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
         guard list != words else { return }
+        if list.count > words.count { Usage.count("words_added", Usage.words(list)) }
         words = list
         Prefs.words = list
         Task { await speech.learn(list) }

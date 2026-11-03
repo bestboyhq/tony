@@ -43,6 +43,13 @@ Names, brands, and jargon Tony should write your way.
 Press Return after each one.
 See [Your words](/tony/docs/your-words.md).
 
+## Share usage stats
+
+On until you turn it off.
+Usage stats are like a finished dictation and how long it was, so we see what to make better, and never what you say or type, or which app.
+Turn it off, and Tony sends one last stat saying so, then nothing; turn it back on whenever you like.
+See [Privacy and offline use](/tony/docs/privacy.md#usage-stats) for every one.
+
 ## Open at login
 
 On by default, so Tony is ready whenever your Mac is.

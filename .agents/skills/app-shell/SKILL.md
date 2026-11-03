@@ -16,6 +16,7 @@ The native macOS app around everything else.
   Tell that click by where it went down, not by a held button: a tap is up before Tony sees it.
   The icon acts on mouse up: a menu opened on mouse down takes the mouse up from the icon's button, which then spends the next click on the icon finishing its own.
   A `nonactivatingPanel` style set after creation still activates Tony on a click: create the panel with it.
+  Its controls draw as live (`controlActiveState` set to key): Tony stays inactive while the panel holds the keyboard, so an on switch would draw grey.
   Clip the glass to its shape: past its edge Liquid Glass draws its own shadow, which reads as a dark outline.
   The panel's shadow is SwiftUI's, in a clear margin that clicks pass through: a window shadow outlines the panel in a dark line.
 - Stats are counts by day (words, time spoken, key up to text, fillers, the user's words, words per app) in `Application Support/Tony/stats.json`, never the text.
@@ -30,6 +31,12 @@ The native macOS app around everything else.
   The download shows its time left, and closing the window ends onboarding for now; until the model is ready, the menu bar icon is a ring filling around the mark.
 - A grant can need a relaunch or a fresh event tap before it works: detect that before claiming success.
   A revoked permission is detected and explained in the HUD and the panel.
+- Usage stats (ADR 0013): `Usage.count` sends one event at a time to bestboy.dev's relay, which passes it to Logdash, so Tony holds no key.
+  Counts, flags, and Tony's own names only: never what was said or typed, which app, the user's words, a device's name, or a path.
+  A count never waits: a failed or slow call is dropped, so it never delays a dictation.
+  On until the user turns it off in Settings (Share usage stats); `Usage.share` sends one last `tony_stats_off` before the switch flips, and turning it back on sends nothing extra and asks nothing.
+  Said, not asked: the end of onboarding's "Meet Tony" description says "Tony shares usage stats, never what you say or type. Turn it off in Settings.", on every step, and whoever onboarded before sees nothing new; no page, window, button, or fine print of its own.
+  A development build sends only to `TONY_EVENTS_URL`.
 - Launch at login through `SMAppService`, offered in onboarding and on by default.
 - Updates with Sparkle 2.
   Check at launch, every 4 hours, and on wake: a menu bar app runs for weeks, and the timer stops while the Mac sleeps.
