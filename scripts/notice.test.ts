@@ -15,8 +15,9 @@ test('NOTICE lists every Swift package, and About credits the same components in
     assert.ok(components.some((c) => c.toLowerCase() === identity), `NOTICE lacks the package ${identity}`)
 })
 
-test('one copyright line everywhere', () => {
+test('one copyright line in every license notice, and the brand in the site footer', () => {
   const line = '2026 Szymon Grącki and Tony contributors'
-  for (const file of ['NOTICE', 'README.md', 'build/Info.plist', 'Sources/Tony/Shell/AboutView.swift', 'site/src/lib/Footer.svelte'])
+  for (const file of ['NOTICE', 'README.md', 'build/Info.plist', 'Sources/Tony/Shell/AboutView.swift'])
     assert.ok(read(file).includes(line), `${file} lacks "${line}"`)
+  assert.ok(read('site/src/lib/Footer.svelte').includes('© 2026 Bestboy and Tony contributors'), 'the site footer lacks the brand line')
 })

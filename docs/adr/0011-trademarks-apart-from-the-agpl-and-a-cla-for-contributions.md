@@ -1,6 +1,6 @@
 # 0011 - Trademarks apart from the AGPL, and a CLA for contributions
 
-Status: accepted
+Status: superseded by 0014
 
 ## Context
 

@@ -34,9 +34,10 @@ Every domain obeys these invariants:
 
 ## License: AGPL-3.0
 
-Tony is `AGPL-3.0-only` (`LICENSE`), like Grip, `Copyright (C) 2026 Szymon Grącki and Tony contributors` (ADR 0011).
-That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadableCopyright`, `NOTICE`, the README, and the site's footer.
-"Best Boy" is a brand, not a legal entity, so it is never the copyright holder.
+Tony is `AGPL-3.0-only` (`LICENSE`), like Grip, `Copyright (C) 2026 Szymon Grącki and Tony contributors` (ADR 0014).
+That line, with © in the UI, is the copyright in every license notice: About, `NSHumanReadableCopyright`, `NOTICE`, and the README.
+"Best Boy" is a brand, not a legal entity, so it is never the copyright holder in a license notice.
+The site's footer names the brand, like every Bestboy site's: `© 2026 Bestboy and Tony contributors`.
 
 - Check the license before adding any dependency or copying any code: it must be AGPL-compatible (MIT, BSD, ISC, zlib, Apache-2.0, MPL-2.0, LGPL, GPL-3.0, AGPL-3.0).
   GPL-2.0-only, SSPL, "source available", non-commercial, closed SDKs, and unlicensed code are out.
