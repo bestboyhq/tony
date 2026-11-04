@@ -66,7 +66,7 @@ private struct Pill: View {
             }
         }
         .padding(.horizontal, 14)
-        .frame(height: 40)
+        .frame(height: Shadow.height)
         .modifier(Glass(increasedContrast: contrast == .increased))
         .background(Hover { hovered = $0 })
         .fixedSize()
@@ -263,6 +263,64 @@ private struct Glass: ViewModifier {
             }
         }
         .clipShape(.capsule)
-        .shadow(color: .black.opacity(0.18), radius: 10, y: 3)
+        .background(Shadow())
+    }
+}
+
+/// The pill's shadow, dithered. `.shadow` bands: over a dark background a soft shadow spans about five gray levels,
+/// which show as rings, more so in a screen recording. Noise of about one gray level blends them.
+struct Shadow: View {
+    static let height = 40.0
+    private static let sigma = 10.0, opacity = 0.2, drop = 3.0, straight = 32.0
+    private static let margin = 3 * sigma
+    private static var images: [String: CGImage] = [:]
+    @Environment(\.displayScale) private var scale
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let ends = Self.margin + Self.height / 2
+        Image(decorative: Self.image(scale: scale, dark: colorScheme == .dark), scale: scale)
+            .resizable(capInsets: EdgeInsets(top: Self.margin, leading: ends, bottom: Self.margin, trailing: ends), resizingMode: .tile)
+            .padding(-Self.margin)
+            .allowsHitTesting(false)
+    }
+
+    /// A capsule `straight` wider than it is high, which the pill tiles to its width. Clear under the capsule, so the
+    /// glass stays as light as it is.
+    static func image(scale: Double, dark: Bool) -> CGImage {
+        let key = "\(scale) \(dark)"
+        if let image = images[key] { return image }
+        let width = Int((height + straight + 2 * margin) * scale), rows = Int((height + 2 * margin) * scale)
+        // One gray level of the background under the pill, in alpha: dark grays have few to spare.
+        let level = dark ? 1.0 / 40 : 1.0 / 220
+        var pixels = [UInt8](repeating: 0, count: width * rows * 4)
+        var random = Xorshift()
+        for y in 0..<rows {
+            for x in 0..<width {
+                let px = (Double(x) + 0.5) / scale - margin - height / 2, py = (Double(y) + 0.5) / scale - margin - height / 2
+                let dx = max(0, abs(px - straight / 2) - straight / 2), r = height / 2
+                let inside = (dx * dx + py * py).squareRoot() - r, below = (dx * dx + (py - drop) * (py - drop)).squareRoot() - r
+                let alpha = opacity * 0.5 * erfc(below / (sigma * 2.0.squareRoot())) * min(1, max(0, inside * scale + 0.5))
+                let noise = (Double.random(in: -0.5...0.5, using: &random) + Double.random(in: -0.5...0.5, using: &random)) * min(level, alpha)
+                pixels[(y * width + x) * 4 + 3] = UInt8((min(1, max(0, alpha + noise)) * 255).rounded())
+            }
+        }
+        let image = CGImage(
+            width: width, height: rows, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: CGDataProvider(data: Data(pixels) as CFData)!, decode: nil, shouldInterpolate: true, intent: .defaultIntent)!
+        images[key] = image
+        return image
+    }
+
+    /// Noise in a few nanoseconds: the system's generator costs the first pill several milliseconds.
+    private struct Xorshift: RandomNumberGenerator {
+        private var state: UInt64 = 0x9E37_79B9_7F4A_7C15
+        mutating func next() -> UInt64 {
+            state ^= state << 13
+            state ^= state >> 7
+            state ^= state << 17
+            return state
+        }
     }
 }
