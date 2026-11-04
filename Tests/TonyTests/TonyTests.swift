@@ -204,6 +204,14 @@ import os
         #expect(stats.streak(on: 10) == 0)
         #expect(stats.longestStreak == 3)
     }
+
+    @Test func appsOfOneNameAddUp() {
+        let names = ["app.malini.desktop.dev": "Malini", "app.malini.desktop": "Malini", "com.tdesktop.Telegram": "Telegram"]
+        let rows = Apps.rows(["app.malini.desktop": 2626, "com.tdesktop.Telegram": 8431, "app.malini.desktop.dev": 95903]) { names[$0]! }
+        #expect(rows.map(\.name) == ["Malini", "Telegram"])
+        #expect(rows.map(\.words) == [98529, 8431])
+        #expect(rows[0].id == "app.malini.desktop.dev")  // the icon of the one used most
+    }
 }
 
 /// Fades the Mac's real output for about four seconds; skipped where software can't set its volume.
@@ -319,5 +327,63 @@ import os
         let between = rows.filter { abs($0 - $0.rounded()) > 0.1 }
         #expect(rows.count > 30)
         #expect(between.count * 4 > rows.count * 3, "\(rows.count - between.count) of \(rows.count) rows sit on one gray level")
+    }
+}
+
+/// Usage stats (ADR 0013): one last event when the switch turns off, nothing while it is off, and never what was said,
+/// typed, or spelled the user's way.
+@Suite(.serialized) struct UsageTests {
+    private let url = URL(string: "http://127.0.0.1:9/api/events")!
+
+    @Test func offSendsNothing() {
+        defer { UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey) }
+        UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey)
+        #expect(Usage.request("launched", [:], to: url) != nil)  // on until turned off
+        UserDefaults.standard.set(false, forKey: Prefs.usageCountsKey)
+        #expect(Usage.request("launched", [:], to: url) == nil)
+        #expect(Usage.request("dictation_finished", Usage.dictation(text: "Hello.", seconds: 1, latency: 90, handsFree: false), to: url) == nil)
+        UserDefaults.standard.set(true, forKey: Prefs.usageCountsKey)  // back on, without a question
+        #expect(Usage.request("launched", [:], to: url) != nil)
+        if ProcessInfo.processInfo.environment["TONY_EVENTS_URL"] == nil { #expect(Usage.url == nil, "a development build sends nowhere") }
+    }
+
+    @Test func turningOffSendsOneLast() throws {
+        defer { UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey) }
+        UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey)
+        let last = try #require(Usage.share(false, to: url)?.httpBody, "sent while still on")
+        let event = try #require((try JSONSerialization.jsonObject(with: last) as? [String: Any])?["events"] as? [[String: Any]])
+        #expect(event.first?["name"] as? String == "tony_stats_off")
+        #expect(!Prefs.usageCounts)
+        #expect(Usage.share(false, to: url) == nil)  // already off
+        #expect(Usage.share(true, to: url) == nil)  // on sends nothing extra
+        #expect(Prefs.usageCounts)
+    }
+
+    @Test func noEventCarriesText() throws {
+        defer { UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey) }
+        UserDefaults.standard.removeObject(forKey: Prefs.usageCountsKey)
+        let said = "Ask Szymon whether Tailscale works in Mokotów, then reply to Ania before lunch."
+        let words = ["Szymon", "Tailscale", "Mokotów", "Supabase"]
+        let events = [
+            ("dictation_finished", Usage.dictation(text: said, seconds: 4.6, latency: 93, handsFree: true)),
+            ("words_added", Usage.words(words)),
+        ]
+        for (name, props) in events {
+            let body = try #require(Usage.request(name, props, to: url)?.httpBody)
+            let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+            #expect(json["app"] as? String == "tony")
+            let event = try #require((json["events"] as? [[String: Any]])?.first)
+            #expect((event["name"] as? String)?.wholeMatch(of: /tony_[a-z0-9_]{1,59}/) != nil)
+            let sent = try #require(event["props"] as? [String: Any])
+            #expect(sent.count <= 9)
+            for (key, value) in sent {
+                #expect(key.wholeMatch(of: /[a-z][a-z0-9_]{0,39}/) != nil)
+                #expect(value is NSNumber, "\(name).\(key) is a count or a flag, never a string")
+            }
+            let text = String(decoding: body, as: UTF8.self)
+            for word in words + ["whether", "Ania", "lunch"] { #expect(!text.contains(word), "\(name) carries \(word)") }
+        }
+        #expect(NSDictionary(dictionary: events[0].1) == ["seconds": 5, "words": 10, "latency_ms": 90, "hands_free": true])
+        #expect([1, 9, 10, 23, 147, 1234].map(Usage.rounded) == [1, 9, 10, 20, 100, 1000])
     }
 }

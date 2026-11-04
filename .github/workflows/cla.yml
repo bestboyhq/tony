@@ -1,6 +1,6 @@
 name: CLA
 
-# Every contributor signs CLA.md once, with a comment on their first pull request (ADR 0011).
+# Every contributor signs CLA.md once, with a comment on their first pull request (ADR 0014).
 # CLA Assistant Lite keeps the signatures in signatures/cla.json on the cla-signatures branch, so main's branch protection never blocks it.
 on:
   issue_comment:

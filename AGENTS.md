@@ -25,7 +25,8 @@ Every domain obeys these invariants:
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
 - **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
-  No account, no telemetry; the network is only for the one-time model download and update checks.
+  No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0013).
+  Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats), and never hold what was said or typed, which app, the user's words, or a name or path.
 - **Works everywhere.** Native apps, browsers, Electron apps, and terminals, on every keyboard layout, Dvorak and Cyrillic included.
 - **Beautiful.** Native look, pixel-perfect, smooth at 120 Hz, light and dark, with Reduce Motion and VoiceOver respected.
 - **Options behind tuned defaults.** Tony works with zero setup.
@@ -33,9 +34,10 @@ Every domain obeys these invariants:
 
 ## License: AGPL-3.0
 
-Tony is `AGPL-3.0-only` (`LICENSE`), like Grip, `Copyright (C) 2026 Szymon Grącki and Tony contributors` (ADR 0011).
-That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadableCopyright`, `NOTICE`, the README, and the site's footer.
-"Best Boy" is a brand, not a legal entity, so it is never the copyright holder.
+Tony is `AGPL-3.0-only` (`LICENSE`), like Grip, `Copyright (C) 2026 Szymon Grącki and Tony contributors` (ADR 0014).
+That line, with © in the UI, is the copyright in every license notice: About, `NSHumanReadableCopyright`, `NOTICE`, and the README.
+"Best Boy" is a brand, not a legal entity, so it is never the copyright holder in a license notice.
+The site's footer names the brand, like every Bestboy site's: `© 2026 Bestboy and Tony contributors`.
 
 - Check the license before adding any dependency or copying any code: it must be AGPL-compatible (MIT, BSD, ISC, zlib, Apache-2.0, MPL-2.0, LGPL, GPL-3.0, AGPL-3.0).
   GPL-2.0-only, SSPL, "source available", non-commercial, closed SDKs, and unlicensed code are out.
@@ -77,6 +79,7 @@ That line, with © in the UI, is the copyright everywhere: About, `NSHumanReadab
 - `node scripts/package.ts --debug` builds `release/Tony.app`, signed with the Developer ID when the Mac has it, so permissions survive rebuilds.
   `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
+- `open --env TONY_EVENTS_URL=http://127.0.0.1:8787/api/events release/Tony.app` points a development build's usage stats at a local stand-in for bestboy.dev's relay; without it, a development build sends none.
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, that `docs/adr/README.md` lists every ADR, and that About, `NOTICE`, and the copyright line agree (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.

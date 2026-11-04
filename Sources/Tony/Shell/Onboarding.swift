@@ -3,7 +3,8 @@ import SwiftUI
 
 /// From install to a first dictation in a minute, without docs. One step at a time: the first one left is
 /// open, the rest are a line each. It asks for the key first, then each permission just in time with a
-/// one-line reason; the model downloads meanwhile; a practice field ends it with a first dictation.
+/// one-line reason; the model downloads meanwhile; a practice field ends it with a first dictation. Its description
+/// says, on every step, that Tony shares usage stats: said, not asked, and Settings has the switch.
 struct OnboardingView: View {
     let permissions: Permissions
     let speech: Speech
@@ -39,7 +40,7 @@ struct OnboardingView: View {
                     .frame(width: 88, height: 88)
                 Text("Meet Tony")
                     .font(.system(size: 26, weight: .bold))
-                Text("Hold \(key), speak, and let go.\nYour words land where the cursor is.")
+                Text("Hold \(key), speak, and let go.\nYour words land where the cursor is.\nTony shares usage stats, never what you say or type.\nTurn it off in Settings.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -122,7 +123,10 @@ struct OnboardingView: View {
         }
         .padding(28)
         .frame(width: 440)
-        .onDisappear { LoginItem.set(launchAtLogin) }  // Done, or the window closed
+        .onDisappear {  // Done, or the window closed
+            LoginItem.set(launchAtLogin)
+            Usage.count("onboarding_finished", ["step": "\(current)", "practiced": !practice.isEmpty])
+        }
     }
 
     /// "Downloading, 38% · ~2min left", once the pace is known.

@@ -9,6 +9,7 @@ enum Prefs {
     static let languagesKey = "languages"
     static let onboardedKey = "onboarded"
     static let wordsKey = "words"
+    static let usageCountsKey = "usageCounts"
 
     static var hotkey: HotkeyKey {
         let code = UserDefaults.standard.object(forKey: hotkeyKey) as? Int
@@ -53,4 +54,7 @@ enum Prefs {
         get { UserDefaults.standard.bool(forKey: onboardedKey) }
         set { UserDefaults.standard.set(newValue, forKey: onboardedKey) }
     }
+
+    /// Usage counts go to bestboy.dev unless turned off (ADR 0013).
+    static var usageCounts: Bool { UserDefaults.standard.object(forKey: usageCountsKey) as? Bool ?? true }
 }
