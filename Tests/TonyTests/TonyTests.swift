@@ -313,6 +313,23 @@ import os
     }
 }
 
+@Suite struct ShadowTests {
+    /// Over the dark gray of a dark window, the shadow below the pill blends between gray levels instead of stepping
+    /// through them in rings, and the glass above it stays clear.
+    @Test func ditheredOverDarkGray() throws {
+        let image = Shadow.image(scale: 2, dark: true)
+        let data = try #require(image.dataProvider?.data as Data?)
+        let gray = { (x: Int, y: Int) in (43 * (1 - Double(data[y * image.bytesPerRow + x * 4 + 3]) / 255)).rounded() }
+        let middle = image.width / 2, strip = middle - 32..<middle + 32  // the straight part, 32 pt wide at 2x
+        #expect(gray(middle, image.height / 2) == 43)
+        let edge = image.height / 2 + Int(Shadow.height)  // the capsule's bottom, 20 pt below its middle at 2x
+        let rows = (edge..<image.height).map { y in strip.map { gray($0, y) }.reduce(0, +) / Double(strip.count) }.filter { $0 < 42.9 }
+        let between = rows.filter { abs($0 - $0.rounded()) > 0.1 }
+        #expect(rows.count > 30)
+        #expect(between.count * 4 > rows.count * 3, "\(rows.count - between.count) of \(rows.count) rows sit on one gray level")
+    }
+}
+
 /// Usage stats (ADR 0013): one last event when the switch turns off, nothing while it is off, and never what was said,
 /// typed, or spelled the user's way.
 @Suite(.serialized) struct UsageTests {
