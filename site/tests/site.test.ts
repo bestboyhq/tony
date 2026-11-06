@@ -94,7 +94,9 @@ test('every image has a size and alt text, and only the hero loads eagerly', () 
 	const images = all(read('index.html'), /(<img\b[^>]*>)/gu);
 	const lazy = images.filter((image) => image.includes('loading="lazy"'));
 	assert.ok(lazy.length >= 3, 'the README images below the fold load lazily');
-	for (const image of images.filter((image) => /\.webp"/u.test(image) && /alt="[^"]+"/u.test(image))) {
+	// The bar's brand icons sit above the fold on every page, so they load eagerly too.
+	const content = images.filter((image) => /\.webp"/u.test(image) && /alt="[^"]+"/u.test(image) && !image.includes('app-icon'));
+	for (const image of content) {
 		assert.ok(/fetchpriority="high"/u.test(image) || image.includes('loading="lazy"'), image);
 	}
 });
@@ -116,6 +118,14 @@ test('the languages page names all 25 languages', () => {
 	const page = read('docs/languages.html');
 	const languages = ['Bulgarian', 'Croatian', 'Czech', 'Danish', 'Dutch', 'English', 'Estonian', 'Finnish', 'French', 'German', 'Greek', 'Hungarian', 'Italian', 'Latvian', 'Lithuanian', 'Maltese', 'Polish', 'Portuguese', 'Romanian', 'Russian', 'Slovak', 'Slovenian', 'Spanish', 'Swedish', 'Ukrainian'];
 	for (const language of languages) assert.ok(page.includes(`<td>${language}</td>`), language);
+});
+
+// Prerendering checks hash links, but files the home page as /tony/, so it skips links to /tony#id.
+test('every link to a section of the home page lands on its id', () => {
+	const ids = new Set(all(read('index.html'), /\bid="([^"]+)"/gu));
+	for (const path of htmlPaths) {
+		for (const id of all(read(htmlFile(path)), /href="\/tony#([^"]+)"/gu)) assert.ok(ids.has(id), `${path}: #${id}`);
+	}
 });
 
 test('the sitemap lists every page by its canonical URL', () => {
