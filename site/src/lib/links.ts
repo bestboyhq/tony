@@ -24,12 +24,13 @@ export type Link = Readonly<{
 	icon?: string;
 	tag?: string;
 	reload?: boolean;
+	current?: boolean;
 }>;
 
 export type Menu = Readonly<{
 	id: string;
 	title: string;
-	columns: readonly Readonly<{ label: string; plain?: boolean; links: readonly Link[] }>[];
+	columns: readonly Readonly<{ label?: string; plain?: boolean; links: readonly Link[] }>[];
 	strip?: Readonly<{ lead: string; text: string; link: Link }>;
 }>;
 
@@ -44,43 +45,73 @@ const RELEASES: Link = { title: 'Releases', href: `${GITHUB_URL}/releases` };
 const DECISIONS: Link = { title: 'Decisions', href: `${GITHUB_URL}/tree/main/docs/adr` };
 const ISSUES: Link = { title: 'Issues', href: `${GITHUB_URL}/issues` };
 
-// The bar's menus, as Bestboy's design lays out an app's site (`docs/design.md` in bestboyhq/platform, "The bar").
+export const ICONS = {
+	bestboy: asset('icons/bestboy.webp'),
+	tony: asset('icons/tony.webp'),
+	malini: asset('icons/malini.webp'),
+	grip: asset('icons/grip.webp'),
+} as const;
+
+// The brand's switcher: one line each, read top to bottom as one story.
+export const APPS: Menu = {
+	id: 'apps',
+	title: 'Tony',
+	columns: [
+		{
+			links: [
+				{
+					title: 'Tony',
+					tag: 'Say it',
+					href: HOME,
+					icon: ICONS.tony,
+					line: 'Speak to your agents.',
+					current: true,
+				},
+				{
+					title: 'Malini',
+					tag: 'Build it',
+					href: MALINI_URL,
+					icon: ICONS.malini,
+					line: 'Ship and automate them.',
+				},
+				{
+					title: 'Grip',
+					tag: 'Share it',
+					href: GRIP_URL,
+					icon: ICONS.grip,
+					line: 'Showcase the results.',
+				},
+			],
+		},
+	],
+	strip: {
+		lead: 'The suite',
+		text: 'Use one, or all three together',
+		link: { title: 'How they fit', href: `${BESTBOY_URL}/#turn` },
+	},
+};
+
+// The bar's menus, as Bestboy's design lays out an app's site (`docs/design.md` in bestboyhq/platform, "The bar"):
+// Product links to the landing page's sections.
 export const MENUS: readonly Menu[] = [
 	{
 		id: 'product',
 		title: 'Product',
 		columns: [
 			{
-				label: 'Tony',
+				label: 'Dictate',
 				links: [
-					{
-						title: 'Prompting AI agents',
-						href: doc('ai-agents'),
-						line: 'Speak your prompt to any agent',
-					},
-					{
-						title: 'Your words',
-						href: doc('your-words'),
-						line: 'Names and jargon, spelled your way',
-					},
-					{
-						title: 'Languages',
-						href: doc('languages'),
-						line: '25 languages, detected as you speak',
-					},
-					{
-						title: 'Speed and accuracy',
-						href: doc('speed-and-accuracy'),
-						line: 'About 50 ms a sentence, on your Mac',
-					},
+					{ title: 'Prompting', href: `${HOME}#prompting`, line: 'Speak your prompt to any agent' },
+					{ title: 'Speed', href: `${HOME}#fast`, line: 'About 50 ms a sentence' },
+					{ title: 'Accuracy', href: `${HOME}#accurate`, line: '25 languages, detected as you speak' },
 				],
 			},
 			{
-				label: 'More from Bestboy',
-				plain: true,
+				label: 'On your Mac',
 				links: [
-					{ title: 'Malini', href: MALINI_URL },
-					{ title: 'Grip', href: GRIP_URL },
+					{ title: 'Menu bar', href: `${HOME}#stats`, line: 'Your last dictation and your stats' },
+					{ title: 'Every app', href: `${HOME}#everywhere`, line: 'If it takes paste, it takes Tony' },
+					{ title: 'Offline', href: `${HOME}#private`, line: 'Your voice never leaves the Mac' },
 				],
 			},
 		],
@@ -147,10 +178,3 @@ export const SITEMAP: readonly Readonly<{ label: string; links: readonly Link[] 
 		],
 	},
 ];
-
-export const ICONS = {
-	bestboy: asset('icons/bestboy.webp'),
-	tony: asset('icons/tony.webp'),
-	malini: asset('icons/malini.webp'),
-	grip: asset('icons/grip.webp'),
-} as const;
