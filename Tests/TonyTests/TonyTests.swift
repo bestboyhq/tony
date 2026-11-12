@@ -330,7 +330,7 @@ import os
     }
 }
 
-/// Usage stats (ADR 0013): one last event when the switch turns off, nothing while it is off, and never what was said,
+/// Usage stats (ADR 0015): one last event when the switch turns off, nothing while it is off, and never what was said,
 /// typed, or spelled the user's way.
 @Suite(.serialized) struct UsageTests {
     private let url = URL(string: "http://127.0.0.1:9/api/events")!
@@ -385,5 +385,71 @@ import os
         }
         #expect(NSDictionary(dictionary: events[0].1) == ["seconds": 5, "words": 10, "latency_ms": 90, "hands_free": true])
         #expect([1, 9, 10, 23, 147, 1234].map(Usage.rounded) == [1, 9, 10, 20, 100, 1000])
+    }
+
+    /// The journey (ADR 0015): each marker once, kept until the relay takes it, with its cohort and days.
+    @Test func journeyMarkersGoOnce() async {
+        let defaults = UserDefaults(suiteName: "TonyJourneyTests")!
+        defaults.removePersistentDomain(forName: "TonyJourneyTests")
+        defer { defaults.removePersistentDomain(forName: "TonyJourneyTests") }
+        final class Relay {  // the clock and the relay's answers, which the test changes as it goes
+            var now = DateComponents(calendar: .current, year: 2026, month: 11, day: 9, hour: 10).date!  // a Monday
+            var ok = true, sent: [String: [String: String]] = [:]
+        }
+        let relay = Relay()
+        let journey = Journey(defaults: defaults, now: { relay.now }) { name, props in
+            if relay.ok { relay.sent[name] = props.mapValues { "\($0)" } }
+            return relay.ok
+        }
+        func at(_ day: Int, month: Int = 11) { relay.now = DateComponents(calendar: .current, year: 2026, month: month, day: day, hour: 23).date! }
+
+        journey.opened(fresh: true)
+        await journey.active()
+        #expect(relay.sent["first_open"] == ["cohort": "2026-11-09", "days": "0"])
+        #expect(relay.sent["day"] == ["week_first": "yes", "month_first": "yes", "age": "day_1"])
+        await journey.setup("key")
+        relay.sent = [:]
+        await journey.active()
+        await journey.setup("key")
+        #expect(relay.sent.isEmpty, "each marker and day once")
+
+        at(11)
+        relay.ok = false
+        await journey.mark("first_dictation")
+        await journey.active()
+        relay.ok = true
+        journey.opened(fresh: true)  // a later launch keeps its cohort
+        await journey.active()  // the next launch sends what failed, as it was then
+        #expect(relay.sent["first_dictation"] == ["cohort": "2026-11-09", "days": "2"])
+        #expect(relay.sent["returned_week_1"] == ["cohort": "2026-11-09", "days": "2"])
+        #expect(relay.sent["day"] == ["week_first": "no", "month_first": "no", "age": "week_1"])
+
+        at(16)  // the next Monday
+        await journey.active()
+        #expect(relay.sent["day"]?["week_first"] == "yes")
+        at(1, month: 12)
+        await journey.active()
+        #expect(relay.sent["month"] == ["month": "2026-11", "active_days": "3"])
+        #expect(relay.sent["returned_month_1"] == ["cohort": "2026-11-09", "days": "22"])
+        #expect(relay.sent["day"] == ["week_first": "yes", "month_first": "yes", "age": "month_1"])
+        relay.sent = [:]
+        at(2, month: 12)
+        await journey.active()
+        #expect(relay.sent["month"] == nil, "a month once")
+
+        let off = Journey(defaults: defaults, now: { relay.now }, on: { false }) { name, _ in relay.sent[name] = [:]; return true }
+        at(3, month: 12)
+        relay.sent = [:]
+        await off.setupFinished()
+        await off.active()
+        #expect(relay.sent.isEmpty && defaults.string(forKey: "usageLastDay") == "2026-12-02", "nothing noted while counts are off")
+
+        let upgraded = Journey(defaults: UserDefaults(suiteName: "TonyJourneyTests.upgrade")!, now: { relay.now }) { name, _ in relay.sent[name] = [:]; return true }
+        relay.sent = [:]
+        upgraded.opened(fresh: false)
+        await upgraded.active()
+        await upgraded.mark("first_dictation")
+        #expect(Set(relay.sent.keys) == ["day"], "no journey without a fresh install")
+        UserDefaults().removePersistentDomain(forName: "TonyJourneyTests.upgrade")
     }
 }

@@ -48,6 +48,7 @@ See [Your words](/tony/docs/your-words.md).
 On until you turn it off.
 Usage stats are like a finished dictation and how long it was, so we see what to make better, and never what you say or type, or which app.
 Turn it off, and Tony sends one last stat saying so, then nothing; turn it back on whenever you like.
+`DO_NOT_TRACK=1` in Tony's environment turns it off too.
 See [Privacy and offline use](/tony/docs/privacy.md#usage-stats) for every one.
 
 ## Open at login

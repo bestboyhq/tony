@@ -55,6 +55,6 @@ enum Prefs {
         set { UserDefaults.standard.set(newValue, forKey: onboardedKey) }
     }
 
-    /// Usage counts go to bestboy.dev unless turned off (ADR 0013).
+    /// Usage counts go to bestboy.dev unless turned off (ADR 0015).
     static var usageCounts: Bool { UserDefaults.standard.object(forKey: usageCountsKey) as? Bool ?? true }
 }

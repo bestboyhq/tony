@@ -25,8 +25,8 @@ Every domain obeys these invariants:
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
 - **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
-  No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0013).
-  Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats), and never hold what was said or typed, which app, the user's words, or a name or path.
+  No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0015).
+  Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats) or sets `DO_NOT_TRACK`, and never hold what was said or typed, which app, the user's words, or a name or path.
 - **Works everywhere.** Native apps, browsers, Electron apps, and terminals, on every keyboard layout, Dvorak and Cyrillic included.
 - **Beautiful.** Native look, pixel-perfect, smooth at 120 Hz, light and dark, with Reduce Motion and VoiceOver respected.
 - **Options behind tuned defaults.** Tony works with zero setup.

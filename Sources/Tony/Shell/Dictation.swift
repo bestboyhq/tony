@@ -268,6 +268,10 @@ final class Dictation {
         stats.record(raw: raw, text: text, yourWords: Prefs.words, seconds: seconds, latency: latency, app: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
         stats.save()
         Usage.count("dictation_finished", Usage.dictation(text: text, seconds: seconds, latency: latency, handsFree: handsFree))
+        Task {
+            await Usage.journey.mark("first_dictation")
+            await Usage.journey.active()  // a new day, for a Tony that runs for days
+        }
     }
 
     /// Pastes the last dictation again, from the menu.
