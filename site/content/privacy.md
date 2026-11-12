@@ -54,6 +54,12 @@ Tony goes online for four things only:
 Once the models are on your Mac, dictation needs no connection at all.
 Turn off Wi-Fi and Tony keeps typing; a stat made offline is dropped.
 
+## This website
+
+This site counts page views and clicks on its Download buttons, never who you are.
+Your browser sends them to bestboy.dev, which passes them on to Logdash with your IP address and User-Agent, the same way as Tony's usage stats.
+The site sets no cookies.
+
 ## Only while you hold the key
 
 The microphone opens when your key goes down and closes when you let go, so the orange dot in the menu bar shows only while Tony listens.

@@ -19,3 +19,4 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0012](0012-the-sites-open-graph-image-is-a-render-of-its-hero.md)         | 0009's site; its Open Graph image is a render of the hero, checked by a test, at a content-named URL   |
 | [0013](0013-usage-counts-through-bestboy-dev.md)                           | 0001's privacy, plus usage counts through bestboy.dev, on unless turned off, never what was said       |
 | [0014](0014-the-site-footer-names-bestboy.md)                              | 0011, but the site footer names Bestboy; license notices keep naming Szymon Grącki                     |
+| [0015](0015-the-site-counts-download-clicks-through-logdash.md)            | Site loads Logdash first-party; each download click sends `tony_web_download_started` and its place    |

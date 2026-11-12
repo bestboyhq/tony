@@ -201,7 +201,7 @@
 		It lands in Claude Code, Codex, your editor, or any chat box, with your project’s names spelled right and
 		the “um” gone. Transcribed on your Mac in about 50 ms.
 	</p>
-	<div class="actions">
+	<div class="actions" data-place="hero">
 		<a class="button primary" href={DOWNLOAD_URL}>
 			{@render apple()}
 			Download for macOS
