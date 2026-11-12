@@ -24,7 +24,14 @@ Speech to text on the Neural Engine.
   At each breath, the rest of the segment is drafted, and when the user lets go without saying more, the draft is the text: key up took 2 ms (median) against 58 ms for five-second segments.
   The draft covers the same windows key up would, so it changes no word.
   Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+  People pause to think mid-sentence, and a segment heard alone ends in a period and the next starts with a capital: "like fire. And forget", "So For example".
+  So Parakeet hears two seconds on each side of a cut, and each side writes only the words that start on its side (`Segments.words`).
+  The cut is at the start of the pause: Parakeet times the word after a pause up to 100 ms early, and a cut in the middle of the pause wrote that word on both sides or on neither.
+  A segment closes once those two seconds after its cut are in; key up before that hears the segment and the rest as one clip.
+  The context shrinks to keep each clip within the model's 15 s window: past it, FluidAudio cuts the clip again, in speech.
+  Parakeet often starts a sentence at a cut even when it hears two seconds before it ("wyślij mi Proszę"), so the word after a cut takes its case from the segment before it, which heard it mid-clip (`Segments.join`).
   Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`) with release builds, against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
+  Also check dictations with thinking pauses mid-sentence (`say` with `[[slnc 800]]` between words), scored with capitals and punctuation: word error rate alone misses these.
   Join clips into dictations at one loudness: FLEURS speakers range down to -69 dB, and the voice activity detection misses a quiet speaker right after a loud one.
 - Parakeet writes `<unk>` for what it can't spell, such as quotes and brackets: it comes out (`Cleanup.dropUnknown`).
 - Parakeet picks its language per clip by itself: short clips can come out in the wrong alphabet (Polish "Tak." as "Так."), and where the audio is unclear (noise, a far mic) it drifts into another language of the same alphabet (FLEURS Polish under pink noise came out with Czech "pořád", Hungarian "részünk", and whole Lithuanian sentences).

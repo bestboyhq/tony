@@ -130,9 +130,35 @@ import os
         p[22] = 0.1  // a breath, not a pause
         p[25...26] = [0.1, 0.1]
         p[32...33] = [0.1, 0.1]
-        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 26)  // each side keeps half the pause
-        #expect(Segments.cut(p, from: 26, after: 4, force: 100) == 33)
+        #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 25)  // the next segment keeps the pause
+        #expect(Segments.cut(p, from: 25, after: 4, force: 100) == 32)
         #expect(Segments.cut(Array(p[..<26]), from: 0, after: 20, force: 100) == nil)  // no pause yet
+    }
+
+    @Test func cutsOnceTheWordsAfterItAreHeard() {
+        var p = [Float](repeating: 0.9, count: 30)
+        p[25...26] = [0.1, 0.1]
+        #expect(Segments.cut(p, from: 0, after: 20, force: 100, context: 8) == nil)  // 5 windows past the cut
+        #expect(Segments.cut(p + [0.9, 0.9, 0.9, 0.9], from: 0, after: 20, force: 100, context: 8) == 25)
+    }
+
+    /// "like fire and forget," heard across a cut at 1 s: each side writes the words that start on it.
+    @Test func keepsTheWordsThatStartOnItsSideOfACut() {
+        let timings = [(" like", 0.2), (" fi", 0.6), ("re", 0.7), (" and", 1.2), (" for", 1.5), ("get", 1.6), (",", 1.8)].map {
+            TokenTiming(token: $0.0, tokenId: 0, startTime: $0.1, endTime: $0.1 + 0.08, confidence: 1)
+        }
+        let result = ASRResult(text: "like fire and forget,", confidence: 1, duration: 2, processingTime: 0, tokenTimings: timings)
+        #expect(Segments.words(of: result, startingIn: 0..<1).text == "like fire")
+        #expect(Segments.words(of: result, startingIn: 1..<2).text == "and forget,")
+        #expect(Segments.words(of: result, startingIn: 0..<2).text == "like fire and forget,")
+    }
+
+    /// The segment before a cut heard the word after it mid-sentence, the segment after as its first word.
+    @Test func joinsInTheCaseHeardBeforeTheCut() {
+        #expect(Segments.join([("to wyślij mi", "proszę"), ("Proszę zaproszenie.", nil)]) == "to wyślij mi proszę zaproszenie.")
+        #expect(Segments.join([("bo w czwartek?", "Mam"), ("mam już", nil)]) == "bo w czwartek? Mam już")
+        #expect(Segments.join([("I talked to", "malina"), ("Malini, and", nil)]) == "I talked to Malini, and")  // another word
+        #expect(Segments.join([("so", "for"), ("", nil), ("For", nil)]) == "so For")  // silence between
     }
 
     @Test func forcesACutWithoutAPause() {
