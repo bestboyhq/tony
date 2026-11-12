@@ -114,6 +114,7 @@ Ported from Grip, where each piece is proven.
 - Every page shares one Open Graph image, a render of the hero by `pnpm og`, never drawn or patched by hand: a pull request that changes what the hero shows renders it again, and the tests fail until it does (ADR 0012).
 - Every fact on the site comes from the README or the code, and the site names no competing product; speech models like Whisper and Parakeet are fine.
 - Each docs page has its own title, description, and H1, and links to the pages around it.
+- The site counts its page views and download clicks through Logdash, first-party under `/tony/_ld/` (ADR 0015): a new site event starts with `tony_web_`, holds no personal data, and gets its own ADR.
 - A pull request that changes only the site is titled `docs:`, so it ships no app release.
 - Every merge to `main` deploys the site, `docs:` ones included: the `site` job in `.github/workflows/ci.yml` runs `npx wrangler@4 deploy` with the `CLOUDFLARE_API_TOKEN` secret (the same value as Malini's).
 
