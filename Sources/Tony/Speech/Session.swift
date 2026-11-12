@@ -157,7 +157,7 @@ actor Session {
                 log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s in \(result.processingTime * 1000, format: .fixed(precision: 0)) ms")
                 return (Cleanup.dropUnknown(result.text), result.tokenTimings ?? [], next)
             }
-            let text = words.apply(to: result, heard: heard)
+            let text = await words.apply(to: result, heard: heard, languages: languages)
             log.info("transcribed \(Double(audio.count) / 16000, format: .fixed(precision: 1)) s with the user's words in \(Date().timeIntervalSince(started) * 1000, format: .fixed(precision: 0)) ms")
             return (Cleanup.dropUnknown(text), result.tokenTimings ?? [], next)
         } catch {

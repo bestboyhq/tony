@@ -48,6 +48,13 @@ Speech to text on the Neural Engine.
   A wrong swap costs more trust than a miss: keep FluidAudio's acoustic rescue off (it swapped "rolled it back" for Wojtek), keep the boost low, and leave an inflected form standing ("na Mokotowie" is Mokotów in Polish).
   The word model's opinion alone over-fires: its score is an average per token, so a boost of 3 lets a word win that is 20 times less likely in every token, and it hears English only ("group" became Grip, "Szymon" Szymeo, "Malina" Malini).
   So only a word Parakeet was unsure of can change (`Words.sure`): it is sure of the words it knows and unsure of the names it doesn't, and a word with letters the word model can't spell ("grypę") is never judged.
+  Only the word's own tokens count: Parakeet is often unsure of the period after a word it knows.
+  The two overlap: Parakeet wrote the user's Malini as "Molini" at 0.94, and 6% of real words sit between 0.9 and 0.99 ("grid" at 0.95, next to the user's Grip).
+  So a word that no spelling dictionary of the user's languages knows can change too (`Words.isWord`), in every variant of each language (plain "en" lacks "practised"), and a language with no dictionary on the Mac knows every word, so it never swaps more.
+  Parakeet also hears rare names right ("Toledans", "Fitzooth"), so such a word changes only where the word model prefers the user's word with no boost.
+  With the boost, decoys swapped 9 names in the test sets (4 before the dictionary); without it, 3, and Malini came out right 5 times in 6 (4 before).
+  FluidAudio scores the written word with the punctuation after it ("Molini,"): scored bare, the margins moved both ways, the decoys' too, so it stays.
+  Check changes there with decoys: user's words one vowel off the words in the test sets, which must change no text.
   FluidAudio's own CTC path leaves the model input uninitialized, and NaNs there make the model deaf, and it copies values through NSNumber (90 ms a call), so `Words` runs the two Core ML models itself.
   Check changes with `Tony --transcribe <file> -words '(Szymon, Supabase)'` on sentences with the words and without them, in English and Polish, with words spelled close to them ("group" for Grip, "Szymon" for Szymeo).
 

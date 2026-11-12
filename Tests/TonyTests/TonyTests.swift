@@ -108,6 +108,15 @@ import os
         #expect(!Words.inflects("tail scale", "Tailscale"))
         #expect(!Words.inflects("Simon", "Szymon"))
     }
+
+    /// A word no dictionary of the user's languages knows was misheard, however sure Parakeet was of it.
+    @Test func namesNoDictionaryKnows() {
+        #expect(!Words.isWord("Molini.", in: [.english, .polish]))
+        #expect(Words.isWord("grid,", in: [.english, .polish]))
+        #expect(Words.isWord("Malina", in: [.english, .polish]))  // Polish
+        #expect(!Words.isWord("Malina", in: [.english]))
+        #expect(Words.isWord("practised", in: [.english]))  // British
+    }
 }
 
 @Suite struct SegmentsTests {

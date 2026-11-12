@@ -1,18 +1,20 @@
+import AppKit
 import CoreML
 import FluidAudio
 import Foundation
 
 /// The user's words: names, brands, and jargon Parakeet doesn't know. Parakeet can't bias its own
 /// decoding, so a second, small model (Parakeet CTC 110M) listens to the same audio, and one of the
-/// user's words replaces what Parakeet wrote only where Parakeet was unsure of it, it is spelled alike,
-/// and the audio fits it better.
+/// user's words replaces what Parakeet wrote only where Parakeet was unsure of it or wrote a word no
+/// dictionary knows, it is spelled alike, and the audio fits it better.
 nonisolated struct Words: Sendable {
     /// How much the audio may favor what Parakeet wrote and the user's word still win. FluidAudio tunes
     /// 4.5 for recall; at that, "Monday" became "Moondream". A wrong swap costs more trust than a miss.
     static let boost: Float = 3.0
     /// Below this confidence in a token, Parakeet was unsure of the word. It is sure of the words it knows,
-    /// 0.99 and up, even where the word model prefers the user's word ("group" for Grip, "Szymon" for Szymeo),
-    /// and unsure of the names it doesn't know (0.39 to 0.87: "Zimeo" for Szymeo, "Superbase" for Supabase).
+    /// most 0.99 and up, even where the word model prefers the user's word ("group" for Grip, "Szymon" for
+    /// Szymeo), and mostly unsure of the names it doesn't know (0.39 to 0.87: "Zimeo" for Szymeo, "Superbase"
+    /// for Supabase). The two overlap ("grid" 0.95, "Molini" for Malini 0.94), so a dictionary settles those.
     static let sure: Float = 0.9
     /// The word model's token for a letter it can't spell. It knows English letters only, so it scores a word
     /// with others ("grypę", "połyk") as noise, and "Mam grypę" became "Mam Grip".
@@ -113,7 +115,7 @@ nonisolated struct Words: Sendable {
     }
 
     /// `result`'s text with the user's words swapped in, spelled their way, punctuation kept.
-    func apply(to result: ASRResult, heard: Heard) -> String {
+    func apply(to result: ASRResult, heard: Heard, languages: Set<Language>) async -> String {
         guard let timings = result.tokenTimings, !timings.isEmpty, !heard.logProbs.isEmpty else { return result.text }
         let evidence = rescorer.ctcTokenEvaluateCandidates(
             transcript: result.text, tokenTimings: timings, logProbs: heard.logProbs, frameDuration: heard.frameDuration,
@@ -121,14 +123,40 @@ nonisolated struct Words: Sendable {
         )
         // FluidAudio's own rewrite drops the punctuation around a swapped word; swap the exact bytes instead.
         let bytes = Array(result.text.utf8)
-        let swaps = evidence.candidates.compactMap { candidate -> (Range<Int>, String)? in
+        var swaps: [(Range<Int>, String)] = []
+        for candidate in evidence.candidates {
             guard candidate.legacyOutcome == .applied, let range = candidate.baseTextUTF8Range, range.upperBound <= bytes.count,
-                  let tokens = candidate.tokenRange, tokens.upperBound <= timings.count, timings[tokens].contains(where: { $0.confidence < Self.sure }),
-                  !tokenizer.encode(candidate.basePhrase).contains(Self.unknown),
-                  !Self.inflects(String(decoding: bytes[range], as: UTF8.self), candidate.canonicalTerm) else { return nil }
-            return (range, candidate.canonicalTerm)
+                  let tokens = candidate.tokenRange, tokens.upperBound <= timings.count,
+                  !tokenizer.encode(candidate.basePhrase).contains(Self.unknown) else { continue }
+            let written = String(decoding: bytes[range], as: UTF8.self)
+            guard !Self.inflects(written, candidate.canonicalTerm) else { continue }
+            // The word's own tokens: Parakeet is often unsure of the period after a word it knows ("grid.").
+            let unsure = timings[tokens].contains { $0.token.contains(where: \.isLetter) && $0.confidence < Self.sure }
+            // Sure of a word no dictionary knows, Parakeet gets its own spelling of a name ("Molini" for Malini), but
+            // also hears names right ("Toledans"): only the word model's own preference, with no boost, swaps those.
+            if !unsure {
+                guard let user = candidate.rawVocabularyCTCScore, let parakeet = candidate.rawOriginalCTCScore, user >= parakeet,
+                      !(await Self.isWord(written, in: languages)) else { continue }
+            }
+            swaps.append((range, candidate.canonicalTerm))
         }
         return Self.respell(Self.replace(result.text, swaps), respelled)
+    }
+
+    /// Whether a dictionary of the user's languages knows `word`. Parakeet is sure of some names it has never
+    /// heard (0.94 for "Molini", the user's Malini), but no dictionary knows them, while it knows "grid" (Grip)
+    /// and Polish "Malina". Every variant counts: plain "en" lacks "practised". A language with no dictionary
+    /// on the Mac knows every word, so it never swaps more.
+    @MainActor static func isWord(_ word: String, in languages: Set<Language>) -> Bool {
+        let checker = NSSpellChecker.shared
+        let letters = word.trimmingCharacters(in: .letters.inverted)
+        let dictionaries = languages.isEmpty ? checker.userPreferredLanguages : languages.flatMap { language in
+            let variants = checker.availableLanguages.filter { $0 == language.rawValue || $0.hasPrefix(language.rawValue + "_") }
+            return variants.isEmpty ? [language.rawValue] : variants
+        }
+        return dictionaries.contains {
+            checker.checkSpelling(of: letters, startingAt: 0, language: $0, wrap: false, inSpellDocumentWithTag: 0, wordCount: nil).location == NSNotFound
+        }
     }
 
     /// Whether `heard` is `word` with an ending, in any capitals and accents: "na Mokotowie" is Mokotów
