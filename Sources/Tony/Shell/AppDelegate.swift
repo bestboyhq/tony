@@ -55,6 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Before anything writes a preference, and before a move to Applications relaunches Tony.
+        Usage.journey.opened(fresh: UserDefaults.standard.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "")?.isEmpty ?? true)
         MoveToApplications.offerIfNeeded()
         NSApp.mainMenu = Self.mainMenu()
 
@@ -100,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { await speech.learn(Prefs.words) }
 
         Usage.count("launched", ["onboarded": Prefs.onboarded])
+        Task { await Usage.journey.active() }
         // Once onboarded, a missing permission is explained in the HUD and the menu instead.
         if !Prefs.onboarded { showOnboarding() }
     }
@@ -193,7 +196,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, let id = windows.first(where: { $0.value === window })?.key else { return }
         // Done or closed, onboarding is over: a missing permission is explained in the HUD and the menu from here.
-        if id == "onboarding" { Prefs.onboarded = true }
+        if id == "onboarding" {
+            Prefs.onboarded = true
+            Task { await Usage.journey.setupFinished() }
+        }
         windows[id] = nil
         if windows.isEmpty { NSApp.setActivationPolicy(.accessory) }
     }

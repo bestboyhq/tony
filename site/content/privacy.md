@@ -25,6 +25,7 @@ Tony shares usage stats, like a finished dictation and how long it was, so we se
 Never what you say or type, and never which app.
 Onboarding says so, under "Meet Tony".
 Turn it off in [Settings](/tony/docs/settings.md#share-usage-stats): Tony sends one last stat saying so, and then nothing.
+Set `DO_NOT_TRACK=1` in Tony's environment, and it sends nothing at all.
 They are not your stats in the menu bar, which stay on your Mac.
 
 Each stat is one event, with numbers, yes-or-no flags, and Tony's own names only:
@@ -36,6 +37,10 @@ Each stat is one event, with numbers, yes-or-no flags, and Tony's own names only
 - **Your words added**: how many you have, never which.
 - **Your key changed**, and its name, like Right ⌥.
 - **Usage stats turned off**, once, as you turn it off, with nothing else.
+- **Your first days with Tony**, each once: the first open, each onboarding step you reach and the seconds since the first, onboarding closed, your first dictation, and coming back within a week or a month.
+  Each carries the day of your first open and how many days have passed since.
+- **A day you used Tony**, once a day: whether it is your first that week or that month, and how long you have had Tony, like "first week".
+- **A month you used Tony**, once, early in the next one: the month and on how many days.
 
 Never sent: what you say or type, your audio, which app the text went to, your words, your mic's name, or any file path or name.
 
@@ -52,7 +57,13 @@ Tony goes online for four things only:
 4. **Usage stats.** One small call to bestboy.dev as each one happens, unless you turn it off in Settings.
 
 Once the models are on your Mac, dictation needs no connection at all.
-Turn off Wi-Fi and Tony keeps typing; a stat made offline is dropped.
+Turn off Wi-Fi and Tony keeps typing; a stat made offline is dropped, except your first days with Tony, which wait for the next launch or dictation.
+
+## This website
+
+This site counts page views and clicks on its Download buttons, never who you are.
+Your browser sends them to bestboy.dev, which passes them on to Logdash with your IP address and User-Agent, the same way as Tony's usage stats.
+The site sets no cookies.
 
 ## Only while you hold the key
 

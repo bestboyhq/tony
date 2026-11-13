@@ -25,8 +25,8 @@ Every domain obeys these invariants:
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
 - **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
-  No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0013).
-  Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats), and never hold what was said or typed, which app, the user's words, or a name or path.
+  No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0016).
+  Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats) or sets `DO_NOT_TRACK`, and never hold what was said or typed, which app, the user's words, or a name or path.
 - **Works everywhere.** Native apps, browsers, Electron apps, and terminals, on every keyboard layout, Dvorak and Cyrillic included.
 - **Beautiful.** Native look, pixel-perfect, smooth at 120 Hz, light and dark, with Reduce Motion and VoiceOver respected.
 - **Options behind tuned defaults.** Tony works with zero setup.
@@ -114,6 +114,7 @@ Ported from Grip, where each piece is proven.
 - Every page shares one Open Graph image, a render of the hero by `pnpm og`, never drawn or patched by hand: a pull request that changes what the hero shows renders it again, and the tests fail until it does (ADR 0012).
 - Every fact on the site comes from the README or the code, and the site names no competing product; speech models like Whisper and Parakeet are fine.
 - Each docs page has its own title, description, and H1, and links to the pages around it.
+- The site counts its page views and download clicks through Logdash, first-party under `/tony/_ld/` (ADR 0015): a new site event starts with `tony_web_`, holds no personal data, and gets its own ADR.
 - A pull request that changes only the site is titled `docs:`, so it ships no app release.
 - Every merge to `main` deploys the site, `docs:` ones included: the `site` job in `.github/workflows/ci.yml` runs `npx wrangler@4 deploy` with the `CLOUDFLARE_API_TOKEN` secret (the same value as Malini's).
 

@@ -3,9 +3,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { IMAGE, SUMS, sums } from '../scripts/og.ts';
+import { LOGDASH_SITE } from '../src/lib/logdash.ts';
 import worker, { type Env } from '../worker/index.ts';
 
 const SITE = 'https://bestboy.dev/tony';
+const DOWNLOAD_URL = 'https://bestboy.dev/download/tony';
 const root = join(import.meta.dirname, '..');
 const build = join(root, 'build', 'tony');
 const content = join(root, 'content');
@@ -151,6 +153,43 @@ const assets: Env = {
 function get(url: string): Promise<Response> {
 	return worker.fetch(new Request(url), assets);
 }
+
+test('every page loads Logdash from bestboy.dev/tony, and every download link sits in a named place (src/lib/track.ts)', () => {
+	for (const path of htmlPaths) {
+		const html = read(htmlFile(path));
+		assert.match(html, /<script defer="" src="\/tony\/_ld\/script\.js"/u, path);
+		assert.match(html, new RegExp(`data-site="${LOGDASH_SITE}"`, 'u'), path);
+		assert.match(html, /data-endpoint="\/tony\/_ld\/events"/u, path);
+	}
+	// The download links in order, each in the place opened last before it: the bar, the hero, the close, the footer.
+	// The browser check of the real nesting is `closest()` in track.ts; this keeps a link from losing its place.
+	const home = read('index.html');
+	const tags = [...home.matchAll(new RegExp(`data-place="([\\w-]+)"|<section id="([\\w-]+)"|href="${DOWNLOAD_URL}"`, 'gu'))];
+	const found: string[] = [];
+	let place = 'page';
+	for (const [match, data, section] of tags)
+		if (match.startsWith('href')) found.push(place);
+		else place = data ?? section ?? place;
+	assert.deepEqual(found, ['bar', 'hero', 'start', 'footer']);
+});
+
+test('the worker refuses Logdash events that are not from a Tony page', async () => {
+	const send = (body: object, type = 'application/json') =>
+		worker.fetch(
+			new Request(`${SITE}/_ld/events`, { method: 'POST', headers: { 'Content-Type': type }, body: JSON.stringify(body) }),
+			assets,
+		);
+	const event = { name: 'pageview', path: '/tony' };
+	const batch = (events: object[]) => ({ siteId: LOGDASH_SITE, events });
+	assert.equal((await send(batch([event]), 'text/plain')).status, 415);
+	assert.equal((await send({ siteId: '0'.repeat(24), events: [event] })).status, 400);
+	assert.equal((await send(batch([event, { ...event, path: '/grip' }]))).status, 400);
+	assert.equal((await send(batch([]))).status, 400);
+	assert.equal((await send(batch(Array(21).fill(event)))).status, 400);
+	const big = await send(batch([{ ...event, pad: '€'.repeat(11000) }]));
+	assert.equal(big.status, 413);
+	assert.equal(big.headers.get('Cache-Control'), 'no-store');
+});
 
 test('the worker marks every host but bestboy.dev noindex and never sets cookies', async () => {
 	const canonical = await get('https://bestboy.dev/tony/docs');

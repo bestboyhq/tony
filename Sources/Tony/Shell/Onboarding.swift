@@ -123,6 +123,7 @@ struct OnboardingView: View {
         }
         .padding(28)
         .frame(width: 440)
+        .onChange(of: current, initial: true) { Task { await Usage.journey.setup("\(current)") } }
         .onDisappear {  // Done, or the window closed
             LoginItem.set(launchAtLogin)
             Usage.count("onboarding_finished", ["step": "\(current)", "practiced": !practice.isEmpty])
