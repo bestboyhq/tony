@@ -1,4 +1,5 @@
 import AVFoundation
+import AppKit
 import Carbon
 import FluidAudio
 import Synchronization
@@ -111,7 +112,9 @@ import os
 
     /// A word no dictionary of the user's languages knows was misheard, however sure Parakeet was of it.
     @Test func namesNoDictionaryKnows() {
-        #expect(!Words.isWord("Molini.", in: [.english, .polish]))
+        #expect(!Words.isWord("Molini.", in: [.english]))
+        // A language with no dictionary on the Mac knows every word: CI's runner has no Polish one.
+        #expect(Words.isWord("Molini.", in: [.english, .polish]) == !NSSpellChecker.shared.availableLanguages.contains("pl"))
         #expect(Words.isWord("grid,", in: [.english, .polish]))
         #expect(Words.isWord("Malina", in: [.english, .polish]))  // Polish
         #expect(!Words.isWord("Malina", in: [.english]))
