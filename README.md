@@ -155,7 +155,7 @@ Never what you say or type, and never which app: only numbers, yes-or-no flags, 
 Onboarding says so: turn it off in Settings, and Tony sends one last stat saying so, then nothing.
 They go to bestboy.dev with no account or ID, which passes them on to Logdash: it counts events and people per day, and follows nobody.
 Your stats in the menu bar are separate, and stay on your Mac.
-[docs/adr/0013](docs/adr/0013-usage-counts-through-bestboy-dev.md) lists every one.
+[docs/adr/0016](docs/adr/0016-usage-journey-active-days-and-do-not-track.md) lists every one.
 
 Tony goes online only to download the speech model once (about 600 MB), the model for your words once (about 100 MB) if you add any, to check for updates, and to share those usage stats.
 

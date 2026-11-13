@@ -3,7 +3,7 @@ import FluidAudio
 import SwiftUI
 
 /// Options exist only where people really differ: the key, the mic, the language, the words. And usage stats,
-/// which are the user's to turn off (ADR 0013).
+/// which are the user's to turn off (ADR 0016).
 struct SettingsView: View {
     let dictation: Dictation
     let speech: Speech
