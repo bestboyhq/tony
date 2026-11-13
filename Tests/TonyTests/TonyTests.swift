@@ -113,8 +113,10 @@ import os
     /// A word no dictionary of the user's languages knows was misheard, however sure Parakeet was of it.
     @Test func namesNoDictionaryKnows() {
         #expect(!Words.isWord("Molini.", in: [.english]))
-        // A language with no dictionary on the Mac knows every word: CI's runner has no Polish one.
-        #expect(Words.isWord("Molini.", in: [.english, .polish]) == !NSSpellChecker.shared.availableLanguages.contains("pl"))
+        // A language with no working dictionary on the Mac knows every word: CI's runner lists Polish, yet its
+        // Polish dictionary rejects nothing.
+        let polish = !Words.isWord("Qxzvbj", in: [.polish])
+        #expect(Words.isWord("Molini.", in: [.english, .polish]) == !polish)
         #expect(Words.isWord("grid,", in: [.english, .polish]))
         #expect(Words.isWord("Malina", in: [.english, .polish]))  // Polish
         #expect(!Words.isWord("Malina", in: [.english]))
