@@ -333,13 +333,17 @@ import os
         for device in Devices.inputs() where device.isBuiltIn || device.transport == kAudioDeviceTransportTypeUSB {
             let count = Atomic<Int>(0)
             mic.use(uid: device.uid)
+            let started = ContinuousClock.now
             mic.start(keyDownAt: 0, onSamples: { count.add($0.count, ordering: .relaxed) }, onError: { Issue.record($0) })
             try await Task.sleep(for: .seconds(1.5))
+            // The sleep ends late while another test holds the main actor (a cold spell checker took 6 s on CI).
+            let open = (ContinuousClock.now - started) / .seconds(1)
             let summary = await mic.stop().value
             #expect(summary.device?.uid == device.uid)
-            // 16 kHz for 1.5 s, less the time the device takes to start (half a second for a Studio Display)
+            // 16 kHz while open, less up to a second the device takes to start (half a second for a Studio Display)
             // and to restart after the configuration change its selection posts.
-            #expect((8000...25000).contains(count.load(ordering: .relaxed)), "\(device.name)")
+            let expected = Int(16_000 * open)
+            #expect((expected - 16_000...expected + 1_000).contains(count.load(ordering: .relaxed)), "\(device.name), open \(open) s")
         }
     }
 }
