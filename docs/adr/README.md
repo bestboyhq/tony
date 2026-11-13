@@ -17,6 +17,7 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0010](0010-fluidaudio-from-our-fork-for-per-language-letters.md)          | FluidAudio from `bestboyhq/FluidAudio`, which keeps Parakeet to the letters of the user's languages    |
 | [0011](0011-trademarks-apart-from-the-agpl-and-a-cla-for-contributions.md) | Superseded by 0014: copyright with Szymon Grącki and contributors; trademarks and the CLA apart        |
 | [0012](0012-the-sites-open-graph-image-is-a-render-of-its-hero.md)         | 0009's site; its Open Graph image is a render of the hero, checked by a test, at a content-named URL   |
-| [0013](0013-usage-counts-through-bestboy-dev.md)                           | Superseded by 0015: 0001's privacy, plus usage counts through bestboy.dev, on unless turned off        |
+| [0013](0013-usage-counts-through-bestboy-dev.md)                           | Superseded by 0016: 0001's privacy, plus usage counts through bestboy.dev, on unless turned off        |
 | [0014](0014-the-site-footer-names-bestboy.md)                              | 0011, but the site footer names Bestboy; license notices keep naming Szymon Grącki                     |
-| [0015](0015-usage-journey-active-days-and-do-not-track.md)                | 0013, plus Malini's journey, day, and month events, each sent once and retried; `DO_NOT_TRACK` honored |
+| [0015](0015-the-site-counts-download-clicks-through-logdash.md)            | Site loads Logdash first-party; each download click sends `tony_web_download_started` and its place    |
+| [0016](0016-usage-journey-active-days-and-do-not-track.md)                 | 0013, plus Malini's journey, day, and month events, each sent once and retried; `DO_NOT_TRACK` honored |

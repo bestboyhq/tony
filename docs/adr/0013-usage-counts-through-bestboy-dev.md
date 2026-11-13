@@ -1,6 +1,6 @@
 # 0013 - Usage counts through bestboy.dev, on unless turned off
 
-Status: superseded by 0015
+Status: superseded by 0016
 
 ## Context
 

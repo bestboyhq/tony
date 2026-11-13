@@ -1,6 +1,6 @@
 import Foundation
 
-/// Usage counts (ADR 0015): what Tony did, like a finished dictation and how long it was, never what was said or
+/// Usage counts (ADR 0016): what Tony did, like a finished dictation and how long it was, never what was said or
 /// typed, the audio, which app the text went to, the user's words, or any path or name. Each count goes on its own
 /// to the Bestboy platform's relay, which passes it to Logdash, so Tony talks only to bestboy.dev and holds no key.
 /// On until turned off in Settings; onboarding's description says so.
@@ -37,7 +37,7 @@ enum Usage {
         return (response as? HTTPURLResponse).map { 200..<300 ~= $0.statusCode } ?? false
     }
 
-    /// Where each person is on their way with Tony (ADR 0015).
+    /// Where each person is on their way with Tony (ADR 0016).
     static let journey = Journey(send: send)
 
     /// `DO_NOT_TRACK` set to anything but "", "0", or "false" turns counts off, like the switch.
@@ -81,7 +81,7 @@ enum Usage {
     }
 }
 
-/// The install journey, active days, and active months, as Malini sends them (ADR 0015). Each event goes once: it is
+/// The install journey, active days, and active months, as Malini sends them (ADR 0016). Each event goes once: it is
 /// stored as sent only once the relay answers OK, so one that fails goes again at the next launch or dictation. While
 /// counts are off it notes nothing, so turning them back on sends nothing from that time. Journey markers go only for a
 /// fresh install, with its `cohort`, the local day of the first open, and `days`, whole local days since then.

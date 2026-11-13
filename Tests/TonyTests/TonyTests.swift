@@ -330,7 +330,7 @@ import os
     }
 }
 
-/// Usage stats (ADR 0015): one last event when the switch turns off, nothing while it is off, and never what was said,
+/// Usage stats (ADR 0016): one last event when the switch turns off, nothing while it is off, and never what was said,
 /// typed, or spelled the user's way.
 @Suite(.serialized) struct UsageTests {
     private let url = URL(string: "http://127.0.0.1:9/api/events")!
@@ -387,7 +387,7 @@ import os
         #expect([1, 9, 10, 23, 147, 1234].map(Usage.rounded) == [1, 9, 10, 20, 100, 1000])
     }
 
-    /// The journey (ADR 0015): each marker once, kept until the relay takes it, with its cohort and days.
+    /// The journey (ADR 0016): each marker once, kept until the relay takes it, with its cohort and days.
     @Test func journeyMarkersGoOnce() async {
         let defaults = UserDefaults(suiteName: "TonyJourneyTests")!
         defaults.removePersistentDomain(forName: "TonyJourneyTests")
