@@ -24,7 +24,14 @@ Speech to text on the Neural Engine.
   At each breath, the rest of the segment is drafted, and when the user lets go without saying more, the draft is the text: key up took 2 ms (median) against 58 ms for five-second segments.
   The draft covers the same windows key up would, so it changes no word.
   Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+  People pause to think mid-sentence, and a segment heard alone ends in a period and the next starts with a capital: "like fire. And forget", "So For example".
+  So Parakeet hears two seconds on each side of a cut, and each side writes only the words that start on its side (`Segments.words`).
+  The cut is at the start of the pause: Parakeet times the word after a pause up to 100 ms early, and a cut in the middle of the pause wrote that word on both sides or on neither.
+  A segment closes once those two seconds after its cut are in; key up before that hears the segment and the rest as one clip.
+  The context shrinks to keep each clip within the model's 15 s window: past it, FluidAudio cuts the clip again, in speech.
+  Parakeet often starts a sentence at a cut even when it hears two seconds before it ("wyślij mi Proszę"), so the word after a cut takes its case from the segment before it, which heard it mid-clip (`Segments.join`).
   Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`) with release builds, against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
+  Also check dictations with thinking pauses mid-sentence (`say` with `[[slnc 800]]` between words), scored with capitals and punctuation: word error rate alone misses these.
   Join clips into dictations at one loudness: FLEURS speakers range down to -69 dB, and the voice activity detection misses a quiet speaker right after a loud one.
 - Parakeet writes `<unk>` for what it can't spell, such as quotes and brackets: it comes out (`Cleanup.dropUnknown`).
 - Parakeet picks its language per clip by itself: short clips can come out in the wrong alphabet (Polish "Tak." as "Так."), and where the audio is unclear (noise, a far mic) it drifts into another language of the same alphabet (FLEURS Polish under pink noise came out with Czech "pořád", Hungarian "részünk", and whole Lithuanian sentences).
@@ -41,6 +48,13 @@ Speech to text on the Neural Engine.
   A wrong swap costs more trust than a miss: keep FluidAudio's acoustic rescue off (it swapped "rolled it back" for Wojtek), keep the boost low, and leave an inflected form standing ("na Mokotowie" is Mokotów in Polish).
   The word model's opinion alone over-fires: its score is an average per token, so a boost of 3 lets a word win that is 20 times less likely in every token, and it hears English only ("group" became Grip, "Szymon" Szymeo, "Malina" Malini).
   So only a word Parakeet was unsure of can change (`Words.sure`): it is sure of the words it knows and unsure of the names it doesn't, and a word with letters the word model can't spell ("grypę") is never judged.
+  Only the word's own tokens count: Parakeet is often unsure of the period after a word it knows.
+  The two overlap: Parakeet wrote the user's Malini as "Molini" at 0.94, and 6% of real words sit between 0.9 and 0.99 ("grid" at 0.95, next to the user's Grip).
+  So a word that no spelling dictionary of the user's languages knows can change too (`Words.isWord`), in every variant of each language (plain "en" lacks "practised"), and a language with no dictionary on the Mac knows every word, so it never swaps more.
+  Parakeet also hears rare names right ("Toledans", "Fitzooth"), so such a word changes only where the word model prefers the user's word with no boost.
+  With the boost, decoys swapped 9 names in the test sets (4 before the dictionary); without it, 3, and Malini came out right 5 times in 6 (4 before).
+  FluidAudio scores the written word with the punctuation after it ("Molini,"): scored bare, the margins moved both ways, the decoys' too, so it stays.
+  Check changes there with decoys: user's words one vowel off the words in the test sets, which must change no text.
   FluidAudio's own CTC path leaves the model input uninitialized, and NaNs there make the model deaf, and it copies values through NSNumber (90 ms a call), so `Words` runs the two Core ML models itself.
   Check changes with `Tony --transcribe <file> -words '(Szymon, Supabase)'` on sentences with the words and without them, in English and Polish, with words spelled close to them ("group" for Grip, "Szymon" for Szymeo).
 
