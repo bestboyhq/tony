@@ -1,6 +1,6 @@
 # 0016 - Usage counts add the install journey and active days, sent once each
 
-Status: accepted
+Status: superseded by 0017
 
 ## Context
 

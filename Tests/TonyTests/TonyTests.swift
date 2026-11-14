@@ -374,7 +374,7 @@ import os
     }
 }
 
-/// Usage stats (ADR 0016): one last event when the switch turns off, nothing while it is off, and never what was said,
+/// Usage stats (ADR 0017): one last event when the switch turns off, nothing while it is off, and never what was said,
 /// typed, or spelled the user's way.
 @Suite(.serialized) struct UsageTests {
     private let url = URL(string: "http://127.0.0.1:9/api/events")!
@@ -401,6 +401,28 @@ import os
         #expect(Usage.share(false, to: url) == nil)  // already off
         #expect(Usage.share(true, to: url) == nil)  // on sends nothing extra
         #expect(Prefs.usageCounts)
+    }
+
+    /// The install ID (ADR 0017): one random UUID per install, kept until the switch turns off, and never in `tony_stats_off`.
+    @Test func installIDLastsUntilTurnedOff() throws {
+        let key = "usageInstall"
+        defer { [Prefs.usageCountsKey, key].forEach(UserDefaults.standard.removeObject) }
+        [Prefs.usageCountsKey, key].forEach(UserDefaults.standard.removeObject)
+        func body(_ request: URLRequest?) throws -> [String: Any] {
+            let data = try #require(request?.httpBody)
+            return try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        let id = try #require(try body(Usage.request("launched", [:], to: url))["install"] as? String)
+        #expect(id.wholeMatch(of: /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/) != nil, "a lowercase UUID v4")
+        #expect(try body(Usage.request("day", [:], to: url))["install"] as? String == id, "the same in every call")
+        #expect(UserDefaults.standard.string(forKey: key) == id, "kept for the next launch")
+        #expect(try body(Usage.share(false, to: url))["install"] == nil, "tony_stats_off names no install")
+        #expect(UserDefaults.standard.string(forKey: key) == nil, "turning off deletes it")
+        #expect(Usage.request("launched", [:], to: url) == nil)
+        #expect(UserDefaults.standard.string(forKey: key) == nil, "nothing makes one while counts are off")
+        Usage.share(true, to: url)
+        let next = try #require(try body(Usage.request("launched", [:], to: url))["install"] as? String)
+        #expect(next != id, "turning on again starts a new one")
     }
 
     @Test func noEventCarriesText() throws {
@@ -431,7 +453,7 @@ import os
         #expect([1, 9, 10, 23, 147, 1234].map(Usage.rounded) == [1, 9, 10, 20, 100, 1000])
     }
 
-    /// The journey (ADR 0016): each marker once, kept until the relay takes it, with its cohort and days.
+    /// The journey (ADR 0017): each marker once, kept until the relay takes it, with its cohort and days.
     @Test func journeyMarkersGoOnce() async {
         let defaults = UserDefaults(suiteName: "TonyJourneyTests")!
         defaults.removePersistentDomain(forName: "TonyJourneyTests")
@@ -473,13 +495,12 @@ import os
         #expect(relay.sent["day"]?["week_first"] == "yes")
         at(1, month: 12)
         await journey.active()
-        #expect(relay.sent["month"] == ["month": "2026-11", "active_days": "3"])
+        #expect(relay.sent["month"] == nil, "no tony_month")
         #expect(relay.sent["returned_month_1"] == ["cohort": "2026-11-09", "days": "22"])
         #expect(relay.sent["day"] == ["week_first": "yes", "month_first": "yes", "age": "month_1"])
         relay.sent = [:]
         at(2, month: 12)
         await journey.active()
-        #expect(relay.sent["month"] == nil, "a month once")
 
         let off = Journey(defaults: defaults, now: { relay.now }, on: { false }) { name, _ in relay.sent[name] = [:]; return true }
         at(3, month: 12)

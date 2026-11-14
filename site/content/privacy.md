@@ -24,7 +24,7 @@ There is no account, and crash reports stay on your Mac.
 Tony shares usage stats, like a finished dictation and how long it was, so we see what to make better.
 Never what you say or type, and never which app.
 Onboarding says so, under "Meet Tony".
-Turn it off in [Settings](/tony/docs/settings.md#share-usage-stats): Tony sends one last stat saying so, and then nothing.
+Turn it off in [Settings](/tony/docs/settings.md#share-usage-stats): Tony sends one last stat saying so, deletes its random ID, and then sends nothing.
 Set `DO_NOT_TRACK=1` in Tony's environment, and it sends nothing at all.
 They are not your stats in the menu bar, which stay on your Mac.
 
@@ -40,12 +40,14 @@ Each stat is one event, with numbers, yes-or-no flags, and Tony's own names only
 - **Your first days with Tony**, each once: the first open, each onboarding step you reach and the seconds since the first, onboarding closed, your first dictation, and coming back within a week or a month.
   Each carries the day of your first open and how many days have passed since.
 - **A day you used Tony**, once a day: whether it is your first that week or that month, and how long you have had Tony, like "first week".
-- **A month you used Tony**, once, early in the next one: the month and on how many days.
 
 Never sent: what you say or type, your audio, which app the text went to, your words, your mic's name, or any file path or name.
 
-The stats go to bestboy.dev with Tony's version, your IP address, and a User-Agent naming Tony and macOS, and no account or ID.
-bestboy.dev passes them on to Logdash, which turns the address into a visitor that changes every day: it counts events and people per day, and follows nobody.
+The stats go to bestboy.dev with Tony's version, your IP address, a User-Agent naming Tony and macOS, and a random ID.
+Tony makes that ID for this install, so we can count the days Tony is used, like on how many of the last 30 days.
+It is not linked to you, your Mac, or an account, and the last stat, as you turn stats off, does not carry it.
+Turning stats off deletes it, so turning them back on starts a new one.
+bestboy.dev passes the stats on to Logdash, which counts them.
 
 ## When Tony goes online
 
@@ -62,7 +64,8 @@ Turn off Wi-Fi and Tony keeps typing; a stat made offline is dropped, except you
 ## This website
 
 This site counts page views and clicks on its Download buttons, never who you are.
-Your browser sends them to bestboy.dev, which passes them on to Logdash with your IP address and User-Agent, the same way as Tony's usage stats.
+Your browser sends them to bestboy.dev, which passes them on to Logdash with your IP address and User-Agent.
+Logdash turns the address into a visitor that changes every day: it counts page views and people per day, and follows nobody.
 The site sets no cookies.
 
 ## Only while you hold the key

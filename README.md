@@ -153,9 +153,11 @@ There is no account, and crash reports stay on your Mac.
 Tony shares usage stats, like a finished dictation and how long it was, so we see what to make better.
 Never what you say or type, and never which app: only numbers, yes-or-no flags, and Tony's own names, like the key you hold.
 Onboarding says so: turn it off in Settings, and Tony sends one last stat saying so, then nothing.
-They go to bestboy.dev with no account or ID, which passes them on to Logdash: it counts events and people per day, and follows nobody.
+They go to bestboy.dev with a random ID made for this install, so we can count the days Tony is used, and no account.
+The ID is not linked to you, and turning stats off deletes it.
+bestboy.dev passes them on to Logdash, which counts them.
 Your stats in the menu bar are separate, and stay on your Mac.
-[docs/adr/0016](docs/adr/0016-usage-journey-active-days-and-do-not-track.md) lists every one.
+[docs/adr/0017](docs/adr/0017-usage-counts-carry-a-random-install-id.md) lists every one.
 
 Tony goes online only to download the speech model once (about 600 MB), the model for your words once (about 100 MB) if you add any, to check for updates, and to share those usage stats.
 
