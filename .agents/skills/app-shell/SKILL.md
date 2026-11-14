@@ -31,12 +31,13 @@ The native macOS app around everything else.
   The download shows its time left, and closing the window ends onboarding for now; until the model is ready, the menu bar icon is a ring filling around the mark.
 - A grant can need a relaunch or a fresh event tap before it works: detect that before claiming success.
   A revoked permission is detected and explained in the HUD and the panel.
-- Usage stats (ADR 0016): `Usage.count` sends one event at a time to bestboy.dev's relay, which passes it to Logdash, so Tony holds no key.
+- Usage stats (ADR 0017): `Usage.count` sends one event at a time to bestboy.dev's relay, which passes it to Logdash, so Tony holds no key.
   Counts, flags, and Tony's own names only: never what was said or typed, which app, the user's words, a device's name, or a path.
   A count never waits: a failed or slow call is dropped, so it never delays a dictation.
-  `Usage.journey` sends Malini's journey markers (`tony_first_open`, `tony_setup_<step>`, `tony_setup_finished`, `tony_first_dictation`, `tony_returned_week_1`, `tony_returned_month_1`), `tony_day`, and `tony_month`, each once: stored as sent only after the relay answers OK, retried at the next launch or dictation.
+  `Usage.journey` sends Malini's journey markers (`tony_first_open`, `tony_setup_<step>`, `tony_setup_finished`, `tony_first_dictation`, `tony_returned_week_1`, `tony_returned_month_1`) and `tony_day`, each once: stored as sent only after the relay answers OK, retried at the next launch or dictation.
+  Every call but `tony_stats_off` carries `install`, a random lowercase UUID made once per install (`Usage.install`), so the dashboard counts the days each install is used; there is no `tony_month`.
   Journey markers go only for a fresh install, one whose preferences were empty at launch; a new onboarding step needs nothing more, since `tony_setup_<step>` takes the step's name.
-  On until the user turns it off in Settings (Share usage stats); `Usage.share` sends one last `tony_stats_off` before the switch flips, and turning it back on sends nothing extra and asks nothing; `DO_NOT_TRACK` turns counts off too.
+  On until the user turns it off in Settings (Share usage stats); `Usage.share` sends one last `tony_stats_off` before the switch flips and deletes the install ID, and turning it back on sends nothing extra, asks nothing, and starts a new ID; `DO_NOT_TRACK` turns counts off too.
   Said, not asked: the end of onboarding's "Meet Tony" description says "Tony shares usage stats, never what you say or type. Turn it off in Settings.", on every step, and whoever onboarded before sees nothing new; no page, window, button, or fine print of its own.
   A development build sends only to `TONY_EVENTS_URL`.
 - Launch at login through `SMAppService`, offered in onboarding and on by default.

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Usage counts (ADR 0016): what Tony did, like a finished dictation and how long it was, never what was said or
+/// Usage counts (ADR 0017): what Tony did, like a finished dictation and how long it was, never what was said or
 /// typed, the audio, which app the text went to, the user's words, or any path or name. Each count goes on its own
 /// to the Bestboy platform's relay, which passes it to Logdash, so Tony talks only to bestboy.dev and holds no key.
 /// On until turned off in Settings; onboarding's description says so.
@@ -37,24 +37,40 @@ enum Usage {
         return (response as? HTTPURLResponse).map { 200..<300 ~= $0.statusCode } ?? false
     }
 
-    /// Where each person is on their way with Tony (ADR 0016).
+    /// Where each person is on their way with Tony (ADR 0017).
     static let journey = Journey(send: send)
 
     /// `DO_NOT_TRACK` set to anything but "", "0", or "false" turns counts off, like the switch.
     static let doNotTrack = ProcessInfo.processInfo.environment["DO_NOT_TRACK"].map { !["", "0", "false"].contains($0.lowercased()) } ?? false
 
     /// The Settings switch. Turning it off sends one last `tony_stats_off`, while still on, so the numbers know how
-    /// many people they leave out; turning it on sends nothing extra.
+    /// many people they leave out, and deletes the install ID; turning it on sends nothing extra.
     @discardableResult static func share(_ on: Bool, to url: URL? = url) -> URLRequest? {
-        defer { UserDefaults.standard.set(on, forKey: Prefs.usageCountsKey) }
+        defer {
+            UserDefaults.standard.set(on, forKey: Prefs.usageCountsKey)
+            if !on { UserDefaults.standard.removeObject(forKey: installKey) }
+        }
         return on ? nil : count("stats_off", to: url)
     }
 
+    /// A random UUID made for this install's counts, so the dashboard counts the days one install is used. It names no
+    /// person, Mac, or account, and only `request` makes one, so nothing does while counts are off.
+    static var install: String {
+        if let id = UserDefaults.standard.string(forKey: installKey) { return id }
+        let id = UUID().uuidString.lowercased()
+        UserDefaults.standard.set(id, forKey: installKey)
+        return id
+    }
+    private static let installKey = "usageInstall"
+
     /// The call that counts it, or nil while counts are off or a development build has nowhere to send them.
     static func request(_ name: String, _ props: [String: Any], to url: URL? = url) -> URLRequest? {
-        let body: [String: Any] = ["app": "tony", "version": Bundle.main.version, "events": [["name": "tony_\(name)", "props": props]]]
+        guard Prefs.usageCounts, !doNotTrack, let url else { return nil }
+        var body: [String: Any] = ["app": "tony", "version": Bundle.main.version, "events": [["name": "tony_\(name)", "props": props]]]
+        // The last call says that an install left the numbers, not which.
+        if name != "stats_off" { body["install"] = install }
         // A NaN would throw an Objective-C exception, not an error.
-        guard Prefs.usageCounts, !doNotTrack, let url, JSONSerialization.isValidJSONObject(body), let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+        guard JSONSerialization.isValidJSONObject(body), let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.httpBody = data
@@ -81,7 +97,7 @@ enum Usage {
     }
 }
 
-/// The install journey, active days, and active months, as Malini sends them (ADR 0016). Each event goes once: it is
+/// The install journey and active days, as Malini sends them (ADR 0017). Each event goes once: it is
 /// stored as sent only once the relay answers OK, so one that fails goes again at the next launch or dictation. While
 /// counts are off it notes nothing, so turning them back on sends nothing from that time. Journey markers go only for a
 /// fresh install, with its `cohort`, the local day of the first open, and `days`, whole local days since then.
@@ -92,7 +108,7 @@ final class Journey {
     private let on: () -> Bool
     private var sending: Set<String> = []
     private static let firstOpen = "usageFirstOpen", sentMarkers = "usageSent", pendingMarkers = "usagePending"
-    private static let setupStarted = "usageSetupStarted", lastDay = "usageLastDay", activeDays = "usageActiveDays", lastMonth = "usageMonth"
+    private static let setupStarted = "usageSetupStarted", lastDay = "usageLastDay"
 
     init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init, on: @escaping () -> Bool = { Prefs.usageCounts && !Usage.doNotTrack }, send: @escaping @MainActor (String, [String: Any]) async -> Bool) {
         self.defaults = defaults
@@ -104,9 +120,11 @@ final class Journey {
     /// First thing at launch: a Mac with no Tony data yet is a fresh install, and today is its cohort.
     func opened(fresh: Bool) {
         if fresh, cohort == nil { defaults.set(Self.day(now()), forKey: Self.firstOpen) }
+        // Left by builds that sent `tony_month` (ADR 0016).
+        for key in ["usageActiveDays", "usageMonth"] { defaults.removeObject(forKey: key) }
     }
 
-    /// At launch and after each dictation: what failed before, the first open, a return, the month before, and the day.
+    /// At launch and after each dictation: what failed before, the first open, a return, and the day.
     func active() async {
         guard on() else { return }
         for (marker, props) in pending { await deliver(marker, props) }
@@ -115,11 +133,7 @@ final class Journey {
             if 1...7 ~= days { await mark("returned_week_1") }
             if 8...30 ~= days { await mark("returned_month_1") }
         }
-        let today = Self.day(now())
-        let days = defaults.stringArray(forKey: Self.activeDays) ?? []
-        if !days.contains(today) { defaults.set(days + [today], forKey: Self.activeDays) }
-        await month(today)
-        await day(today)
+        await day(Self.day(now()))
     }
 
     /// An onboarding step the user reached, timed from the first one.
@@ -155,17 +169,6 @@ final class Journey {
         let age = switch daysSinceFirstOpen ?? .max { case ..<1: "day_1" case ..<7: "week_1" case ..<30: "month_1" default: "later" }
         let props = ["week_first": weekFirst ? "yes" : "no", "month_first": last?.prefix(7) != today.prefix(7) ? "yes" : "no", "age": age]
         await once("day", props) { defaults.set(today, forKey: Self.lastDay) }
-    }
-
-    /// In a new month, the last earlier month Tony was active in, and on how many days.
-    private func month(_ today: String) async {
-        let current = String(today.prefix(7))
-        let earlier = (defaults.stringArray(forKey: Self.activeDays) ?? []).filter { $0.prefix(7) < current }
-        guard let month = earlier.max().map({ String($0.prefix(7)) }), defaults.string(forKey: Self.lastMonth) != month else { return }
-        await once("month", ["month": month, "active_days": earlier.filter { $0.hasPrefix(month) }.count]) {
-            defaults.set(month, forKey: Self.lastMonth)
-            defaults.set((defaults.stringArray(forKey: Self.activeDays) ?? []).filter { $0.prefix(7) >= current }, forKey: Self.activeDays)
-        }
     }
 
     /// Sends unless the same event is on its way, and records it only once the relay took it.
