@@ -17,6 +17,8 @@ Speech to text on the Neural Engine.
   Load at launch and keep the model warm, so the first key press finds it ready.
 - Trim silence at both ends with voice activity detection, and insert nothing when there is no speech.
   Speech models invent text ("Thank you.") from silence and noise.
+  Speech is a window Silero reads at 0.6 or more (`Session.speechThreshold`): it reads speech near 1.0 even 35 dB down, and noise at 0.33 or less (white noise at -50 dB).
+  At 0.3 (Handy's value, on 32 ms frames, not Tony's 256 ms windows), 30 LibriSpeech clips, clean, 35 dB down, in room noise, and with a soft first or last word, came out within one word in 712 either way, and room noise cost one draft at key up: 0.6 keeps its margin above noise.
 - Dictation transcribes in the background while the user still speaks: the first pause after ten seconds of talk closes a segment, so key up only transcribes what came after the last one, after a sentence or five minutes of talk.
   A pause is two quiet voice activity windows, half a second; one is a breath, often mid-sentence.
   Parakeet hears each segment alone and ends it as a sentence, so short segments cost words: cutting at each breath after five seconds made 16% more word errors in English than 30 s segments, and ten seconds to a pause made none more.

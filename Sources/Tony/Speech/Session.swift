@@ -11,6 +11,9 @@ import OSLog
 /// breath, and every half second of speech, the rest is drafted: the HUD shows the drafts while the user speaks,
 /// and when the user lets go without saying more, the last draft is the text.
 actor Session {
+    /// A voice activity window at least this likely to be speech is speech. Silero reads speech near 1, even 35 dB down,
+    /// and noise at 0.33 or less: on LibriSpeech, quiet, in room noise, and with a soft first or last word, 0.3 changed
+    /// one word in 712 either way and cost a draft at key up in room noise, so 0.6 keeps a margin above noise.
     static let speechThreshold: Float = 0.6
     static let window = VadManager.chunkSize  // 256 ms at 16 kHz
     /// A background segment closes at the first pause after this much of it (in VAD windows): ~10 s, so it
