@@ -93,7 +93,9 @@ The pill is most of what you will ever see of Tony, so it gets the attention.
   The dot, Tony's blue-to-orange mark, swells as you speak, and its colors churn and rise with your voice.
   Hover the pill and the dot comes alight too.
 - **Words that arrive like magic.** While you talk, each word fades in above the pill as Tony hears it, and a word it hears better on a second listen blurs into the new one in place.
-  The caption keeps your last three lines and scrolls the rest away.
+  The caption keeps your last five lines and scrolls the rest away.
+- **One liquid.** On macOS 26 the caption buds out of the pill like a drop of glass, lets go, and floats above it.
+  When you let go of the key, it shrinks back into a drop and flows into the pill.
 - **Busy only when it is.** Transcribing usually takes a blink, so a soft wave runs across the bars only when it takes long enough to notice.
 - **A lock for hands-free,** so you know letting go won't stop it.
 - **Never in the way.** It never takes focus or a click from the app beneath it, so your text always lands where you were typing.

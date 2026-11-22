@@ -78,8 +78,11 @@ actor Session {
             background = Task {
                 await previous?.value
                 texts.append(await transcribe(range, cut: true))
-                shown = drafts  // older drafts are of this segment
-                preview = Segments.join(texts)
+                // With speech after the cut, the next draft shows it with this segment, even one already waiting on
+                // this task: shown now without it, those words blinked out, and stayed out until key up.
+                if Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold) == nil {
+                    preview = Segments.join(texts)
+                }
             }
         } else if let speech = Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold),
                   draft?.windows.lowerBound != committed || draft?.speech != speech {

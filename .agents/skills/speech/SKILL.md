@@ -29,6 +29,8 @@ Speech to text on the Neural Engine.
   The draft covers the same windows key up would, so it changes no word.
   Every 0.45 s of speech (`Session.draftEvery`), the rest is drafted too, one draft at a time, for the HUD's caption (ADR 0019): `Session.preview` is the closed segments and the latest draft.
   Reuse a draft at key up only when its speech is the speech key up would transcribe, so the caption never changes the text.
+  A closed segment updates the preview only when nobody spoke after its cut; otherwise the next draft shows both.
+  Shown alone, it dropped the words said after the pause, and a draft already waiting on it was taken for stale, so they stayed gone until key up.
   Cut inside a pause where there is one: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
   People pause to think mid-sentence, and a segment heard alone ends in a period and the next starts with a capital: "like fire. And forget", "So For example".
   So Parakeet hears two seconds on each side of a cut, and each side writes only the words that start on its side (`Segments.words`).
