@@ -22,3 +22,5 @@ A change that makes or reverses a decision writes a new record with the `adr` sk
 | [0015](0015-the-site-counts-download-clicks-through-logdash.md)            | Site loads Logdash first-party; each download click sends `tony_web_download_started` and its place    |
 | [0016](0016-usage-journey-active-days-and-do-not-track.md)                 | Superseded by 0017: 0013, plus journey, day, and month events, sent once; `DO_NOT_TRACK` honored       |
 | [0017](0017-usage-counts-carry-a-random-install-id.md)                     | 0016, plus a random install ID that turning stats off deletes; `tony_month` goes                       |
+| [0018](0018-capture-through-an-ioproc-on-the-one-mic.md)                   | Capture through an IOProc on the one mic Tony records; no `AVAudioEngine`, so idle holds no device     |
+| [0019](0019-show-the-words-while-the-user-speaks.md)                       | Parakeet Ultra drafts every ~0.45 s; a caption above the pill shows each word as it lands              |

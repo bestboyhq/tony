@@ -1,14 +1,20 @@
 import SwiftUI
 
 /// The pill: listening with the live mic level, transcribing when that takes long enough to notice,
-/// and notices. Springs for motion; Reduce Motion swaps movement for fades.
+/// and notices; above it, while the user speaks, the caption of what Tony hears. Springs for motion; Reduce Motion
+/// swaps movement for fades.
 struct HUDView: View {
     let dictation: Dictation
     let mic: Mic
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        VStack(spacing: 10) {
+            if captioned {
+                Caption(text: dictation.preview, listening: dictation.phase == .listening)
+                    .frame(width: Caption.width)
+                    .transition(reduceMotion ? .opacity : .offset(y: 6).combined(with: .scale(scale: 0.98, anchor: .bottom)).combined(with: .opacity))
+            }
             if dictation.phase != .idle {
                 Pill(dictation: dictation, mic: mic)
                     .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
@@ -17,6 +23,11 @@ struct HUDView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 26)  // the pill 18 pt above the Dock, and room for its shadow
         .animation(animation, value: dictation.phase)
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.4, bounce: 0.15), value: captioned)
+    }
+
+    private var captioned: Bool {
+        (dictation.phase == .listening || dictation.phase == .transcribing) && !dictation.preview.isEmpty
     }
 
     /// In like a bubble, quick with a little overshoot; out without one.
@@ -67,7 +78,7 @@ private struct Pill: View {
         }
         .padding(.horizontal, 14)
         .frame(height: Shadow.height)
-        .modifier(Glass(increasedContrast: contrast == .increased))
+        .modifier(Glass(shape: Capsule(), radius: Shadow.height / 2, increasedContrast: contrast == .increased))
         .background(Hover { hovered = $0 })
         .fixedSize()
         .accessibilityElement(children: .combine)
@@ -88,6 +99,174 @@ private struct Pill: View {
         case let .notice(notice): notice.message
         case .idle: ""
         }
+    }
+}
+
+/// What Tony hears while the user speaks: Parakeet's latest draft, a sentence on its last three lines.
+/// Each word is a view of its own, so when a draft changes, one spring moves the card and every word to its new place
+/// on its line. A new word fades in and unblurs like the text Malini streams, a beat after the one before it; a word the
+/// draft drops, or wraps onto another line, blurs out where it was; the word being said stays dim until the next draft
+/// keeps it.
+struct Caption: View {
+    let text: String
+    let listening: Bool
+    @State private var words: [Word]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+    static let width = 532.0, padding = 16.0
+    private static let font = NSFont.systemFont(ofSize: 14), spacing = 3.0
+    private static let space = (" " as NSString).size(withAttributes: [.font: font]).width
+    /// Three lines; one is as high as the pill with its padding.
+    private static let line = (font.ascender - font.descender + font.leading).rounded(.up)
+    private static let height = 3 * line + 2 * spacing
+    /// Long enough to run into the next draft, ~0.45 s later, so the card flows instead of stepping.
+    private static let motion = Animation.smooth(duration: 0.5)
+    /// A new word waits this long, until the card has made room for most of it, so the card's edge never cuts it.
+    static let lead = 0.1
+
+    init(text: String, listening: Bool) {
+        self.text = text
+        self.listening = listening
+        _words = State(initialValue: Self.words(text, after: [], at: Date.now.timeIntervalSinceReferenceDate, listening: listening))
+    }
+
+    struct Word: Identifiable {
+        var text: String
+        /// When it starts to fade in, and when it stopped being the word being said, on the reference date's clock.
+        var born: Double
+        var settled: Double?
+        /// Each new word is born after every word before it, so its birth names it.
+        var id: Double { born }
+    }
+
+    var body: some View {
+        let lines = Self.lines(words, width: Self.width - 2 * Self.padding)
+        let fade = AnyTransition(Blur(radius: reduceMotion ? 0 : 5)).animation(.easeOut(duration: 0.2))
+        TimelineView(.animation) { timeline in
+            let now = timeline.date.timeIntervalSinceReferenceDate
+            VStack(alignment: .leading, spacing: Self.spacing) {
+                // The last three lines, and the one scrolling out above them.
+                ForEach(lines.indices.suffix(4), id: \.self) { i in
+                    HStack(spacing: Self.space) {
+                        ForEach(lines[i]) { word in
+                            Text(verbatim: word.text)
+                                .fixedSize()
+                                .modifier(Reveal(word: word, now: now, reduceMotion: reduceMotion))
+                                .transition(fade)
+                        }
+                    }
+                    // Out of sight before it reaches the card's edge.
+                    .animation(.easeOut(duration: 0.15)) { $0.opacity(i < lines.count - 3 ? 0 : 1) }
+                    .transition(fade)
+                }
+            }
+        }
+        .font(Font(Self.font))
+        .fixedSize()
+        .frame(maxHeight: Self.height, alignment: .bottom)
+        .mask {
+            // A fade above the text until it outgrows three lines, then over the top one, sliding down as the lines
+            // scroll up. Room beside them for a word's blur.
+            VStack(spacing: 0) {
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: Self.line)
+                Rectangle()
+            }
+            .padding(.top, lines.count > 3 ? 0 : -Self.line)
+            .padding([.horizontal, .bottom], -8)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, Self.padding)
+        .padding(.vertical, (Shadow.height - Self.line) / 2)
+        .modifier(Glass(shape: RoundedRectangle(cornerRadius: Shadow.height / 2), radius: Shadow.height / 2, increasedContrast: contrast == .increased))
+        .onChange(of: text) { update() }
+        .onChange(of: listening) { update() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+
+    private func update() {
+        let words = Self.words(text, after: words, at: Date.now.timeIntervalSinceReferenceDate, listening: listening)
+        withAnimation(reduceMotion ? nil : Self.motion) { self.words = words }
+    }
+
+    /// The words of `text`, those already shown keeping their times. Parakeet hears each draft as a sentence, so it
+    /// may write a word again in another case or with other punctuation: that word stays, with its new spelling. New
+    /// words come one after another, a burst within 0.4 s, once the card has room. While the user speaks, the last
+    /// word is the one being said: dim, and without the period Parakeet ends each draft with.
+    static func words(_ text: String, after old: [Word], at now: Double, listening: Bool) -> [Word] {
+        var new = text.split(separator: " ").map(String.init)
+        if listening, var last = new.popLast() {
+            while let end = last.last, ".?!…".contains(end), last.count > 1 { last.removeLast() }
+            new.append(last)
+        }
+        let key = { (word: String) in word.lowercased().filter { $0.isLetter || $0.isNumber } }
+        var inserted = Set<Int>(), removed = Set<Int>()
+        for change in new.map(key).difference(from: old.map { key($0.text) }) {
+            switch change {
+            case let .insert(offset, _, _): inserted.insert(offset)
+            case let .remove(offset, _, _): removed.insert(offset)
+            }
+        }
+        var kept = old.indices.filter { !removed.contains($0) }.makeIterator()
+        let step = min(0.06, 0.4 / Double(max(1, inserted.count)))
+        var next = max(now + lead, (old.map(\.born).max() ?? now) + step)
+        return new.indices.map { i in
+            var word: Word
+            if inserted.contains(i) {
+                word = Word(text: new[i], born: next)
+                next += step
+            } else {
+                word = old[kept.next()!]
+                word.text = new[i]
+            }
+            if word.settled == nil, !listening || i < new.count - 1 { word.settled = max(now, word.born) }
+            return word
+        }
+    }
+
+    /// The words in lines as they wrap in `width`.
+    static func lines(_ words: [Word], width: Double) -> [[Word]] {
+        var lines: [[Word]] = [], x = width
+        for word in words {
+            // Rounded up, as a view sizes its text, so a line never outgrows the card.
+            let size = (word.text as NSString).size(withAttributes: [.font: font]).width.rounded(.up)
+            if x + space + size > width {
+                lines.append([word])
+                x = size
+            } else {
+                lines[lines.count - 1].append(word)
+                x += space + size
+            }
+        }
+        return lines
+    }
+}
+
+/// A caption's word as it arrives: from clear, blurred and a little low to sharp in place over half a second on
+/// Malini's curve, at half strength while it is the word being said. With Reduce Motion it only fades.
+private struct Reveal: ViewModifier {
+    let word: Caption.Word
+    let now: Double
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        let shown = Self.ease((now - word.born) / 0.5)
+        content
+            .opacity(shown * (0.5 + 0.5 * (word.settled.map { Self.ease((now - $0) / 0.3) } ?? 0)))
+            .blur(radius: reduceMotion ? 0 : 5 * (1 - shown))
+            .offset(y: reduceMotion ? 0 : 4 * (1 - shown))
+    }
+
+    /// Expo out, Malini's curve for streamed text (cubic-bezier(0.16, 1, 0.3, 1)), over 0...1.
+    private static func ease(_ t: Double) -> Double { t <= 0 ? 0 : t >= 1 ? 1 : 1 - pow(2, -10 * t) }
+}
+
+/// A dropped word, out of focus as it fades.
+private struct Blur: Transition {
+    let radius: Double
+
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content.opacity(phase.isIdentity ? 1 : 0).blur(radius: phase.isIdentity ? 0 : radius)
     }
 }
 
@@ -245,25 +424,27 @@ private struct Meter: View {
 }
 
 /// Liquid Glass where the system has it, vibrancy before that; solid with Reduce Transparency, outlined
-/// with Increase Contrast. A soft shadow lifts it off whatever is under it. Clipped to its shape: Liquid Glass
-/// draws its own shadow just past its edge, which reads as a dark outline.
-private struct Glass: ViewModifier {
+/// with Increase Contrast. A soft shadow lifts it off whatever is under it. Clipped to its shape, whose corners are
+/// `radius`: Liquid Glass draws its own shadow just past its edge, which reads as a dark outline.
+private struct Glass<S: InsettableShape>: ViewModifier {
+    let shape: S
+    let radius: Double
     let increasedContrast: Bool
 
     func body(content: Content) -> some View {
         Group {
             if #available(macOS 26, *) {
                 content
-                    .glassEffect(.regular, in: .capsule)
-                    .overlay(Capsule().strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0), lineWidth: 1))
+                    .glassEffect(.regular, in: shape)
+                    .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0), lineWidth: 1))
             } else {
                 content
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(Capsule().strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0.08), lineWidth: increasedContrast ? 1 : 0.5))
+                    .background(.regularMaterial, in: shape)
+                    .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0.08), lineWidth: increasedContrast ? 1 : 0.5))
             }
         }
-        .clipShape(.capsule)
-        .background(Shadow())
+        .clipShape(shape)
+        .background(Shadow(radius: radius))
     }
 }
 
@@ -271,6 +452,8 @@ private struct Glass: ViewModifier {
 /// which show as rings, more so in a screen recording. Noise of about one gray level blends them.
 struct Shadow: View {
     static let height = 40.0
+    /// The corner radius of the shape it lifts.
+    var radius: Double
     private static let sigma = 10.0, opacity = 0.2, drop = 3.0, straight = 32.0
     private static let margin = 3 * sigma
     private static var images: [String: CGImage] = [:]
@@ -278,28 +461,32 @@ struct Shadow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let ends = Self.margin + Self.height / 2
-        Image(decorative: Self.image(scale: scale, dark: colorScheme == .dark), scale: scale)
-            .resizable(capInsets: EdgeInsets(top: Self.margin, leading: ends, bottom: Self.margin, trailing: ends), resizingMode: .tile)
+        let corner = Self.margin + radius
+        Image(decorative: Self.image(radius: radius, scale: scale, dark: colorScheme == .dark), scale: scale)
+            .resizable(capInsets: EdgeInsets(top: corner, leading: corner, bottom: corner, trailing: corner), resizingMode: .tile)
             .padding(-Self.margin)
             .allowsHitTesting(false)
     }
 
-    /// A capsule `straight` wider than it is high, which the pill tiles to its width. Clear under the capsule, so the
-    /// glass stays as light as it is.
-    static func image(scale: Double, dark: Bool) -> CGImage {
-        let key = "\(scale) \(dark)"
+    /// A rectangle with corners of `radius` and sides `straight` long, which the shape tiles to its size: the pill,
+    /// as high as its corners, to its width. Clear under the shape, so the glass stays as light as it is.
+    static func image(radius: Double, scale: Double, dark: Bool) -> CGImage {
+        let key = "\(radius) \(scale) \(dark)"
         if let image = images[key] { return image }
-        let width = Int((height + straight + 2 * margin) * scale), rows = Int((height + 2 * margin) * scale)
+        let side = 2 * (margin + radius) + straight, width = Int(side * scale), rows = width
         // One gray level of the background under the pill, in alpha: dark grays have few to spare.
         let level = dark ? 1.0 / 40 : 1.0 / 220
         var pixels = [UInt8](repeating: 0, count: width * rows * 4)
         var random = Xorshift()
+        // Signed distance from the shape, negative inside.
+        func distance(_ x: Double, _ y: Double) -> Double {
+            let qx = abs(x) - straight / 2, qy = abs(y) - straight / 2
+            return (max(qx, 0) * max(qx, 0) + max(qy, 0) * max(qy, 0)).squareRoot() + min(max(qx, qy), 0) - radius
+        }
         for y in 0..<rows {
             for x in 0..<width {
-                let px = (Double(x) + 0.5) / scale - margin - height / 2, py = (Double(y) + 0.5) / scale - margin - height / 2
-                let dx = max(0, abs(px - straight / 2) - straight / 2), r = height / 2
-                let inside = (dx * dx + py * py).squareRoot() - r, below = (dx * dx + (py - drop) * (py - drop)).squareRoot() - r
+                let px = (Double(x) + 0.5) / scale - side / 2, py = (Double(y) + 0.5) / scale - side / 2
+                let inside = distance(px, py), below = distance(px, py - drop)
                 let alpha = opacity * 0.5 * erfc(below / (sigma * 2.0.squareRoot())) * min(1, max(0, inside * scale + 0.5))
                 let noise = (Double.random(in: -0.5...0.5, using: &random) + Double.random(in: -0.5...0.5, using: &random)) * min(level, alpha)
                 pixels[(y * width + x) * 4 + 3] = UInt8((min(1, max(0, alpha + noise)) * 255).rounded())

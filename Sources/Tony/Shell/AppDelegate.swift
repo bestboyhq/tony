@@ -15,6 +15,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static func main() {
         if CommandLine.arguments.count >= 3, CommandLine.arguments[1] == "--transcribe" {
             Task { exit(await transcribe(CommandLine.arguments.dropFirst(2).prefix { !$0.hasPrefix("-") })) }
+            if UserDefaults.standard.bool(forKey: "hud") {
+                NSApplication.shared.setActivationPolicy(.accessory)
+                NSApplication.shared.run()
+            }
             RunLoop.main.run()
         }
         let app = NSApplication.shared
@@ -23,14 +27,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         withExtendedLifetime(delegate) { app.run() }
     }
 
-    /// `Tony --transcribe <audio file>... [-words '(Szymon, Supabase)'] [-realtime YES]`: the speech path of a
+    /// `Tony --transcribe <audio file>... [-words '(Szymon, Supabase)'] [-realtime YES] [-hud YES]`: the speech path of a
     /// dictation (model, voice activity detection, the user's words, cleanup) without the mic or the key, fed in
     /// 20 ms chunks like the mic does, one file after another on the warm model. Times key up: what is left once
     /// the audio is in. Only `-realtime YES`, which feeds as fast as the mic would, leaves the background its time.
+    /// Prints each preview the HUD would show, at its time in the audio, to standard error; `-hud YES` draws the HUD
+    /// too, under the desktop picture, for a window recording.
     private static func transcribe(_ paths: some Collection<String>) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
         await speech.learn(Prefs.words)
+        let dictation = UserDefaults.standard.bool(forKey: "hud") ? Dictation(speech: speech, ducking: nil) : nil
+        // The HUD's view on a plain dark backdrop, in a window under the desktop picture: a window recording of it
+        // shows the same each time, and the user's screen shows none of it.
+        let window = dictation.map { dictation in
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: HUD.size), styleMask: .borderless, backing: .buffered, defer: false)
+            window.contentView = NSHostingView(rootView: HUDView(dictation: dictation, mic: dictation.mic)
+                .background(LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)], startPoint: .top, endPoint: .bottom)))
+            window.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)) - 1)
+            window.orderFrontRegardless()
+            return window
+        }
+        defer { withExtendedLifetime(window) {} }
         for path in paths {
             guard let session = speech.session(languages: Prefs.languages) else {
                 print("speech not ready: \(speech.state)")
@@ -41,15 +59,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 return 1
             }
             let realtime = UserDefaults.standard.bool(forKey: "realtime"), began = ContinuousClock.now
+            var shown = ""
+            dictation?.show("")
             for start in stride(from: 0, to: samples.count, by: 320) {
                 if realtime { try? await Task.sleep(until: began + .seconds(Double(start) / 16000), clock: .continuous) }
-                await session.append(Array(samples[start..<min(start + 320, samples.count)]))
+                let chunk = Array(samples[start..<min(start + 320, samples.count)])
+                dictation?.mic.show(chunk)
+                await session.append(chunk)
+                let preview = Cleanup.removeFillers(await session.preview)
+                if preview != shown {
+                    shown = preview
+                    dictation?.show(preview)
+                    FileHandle.standardError.write(Data(String(format: "%5.2f s: %@\n", Double(start) / 16000, preview).utf8))
+                }
             }
             let keyUp = Date()
             let text = Cleanup.removeFillers(await session.finish())
             print(text)
             let timing = String(format: "%.1f s of audio, key up to text %.0f ms\n", Double(samples.count) / 16000, Date().timeIntervalSince(keyUp) * 1000)
             FileHandle.standardError.write(Data(timing.utf8))
+            if let dictation {
+                dictation.show(nil)
+                try? await Task.sleep(for: .seconds(1))
+            }
         }
         return 0
     }
@@ -124,7 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        dictation.ducking.restoreNow()
+        dictation.ducking?.restoreNow()
     }
 
     /// Shown while a window is open. Text fields need Edit's key equivalents: ⌘V, Tony's own paste

@@ -16,6 +16,13 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
 - States: listening with the live mic level, transcribing (only when it takes long enough to notice), done, and errors.
   An error is one plain sentence with at most one action.
 - It sits at the bottom center of the display with the focused window, above the Dock.
+- While the user speaks, a caption above the pill shows Parakeet's latest draft, at most three lines (ADR 0019).
+  Each word is a view of its own, named by the time it arrived, so a word the next draft keeps never moves on its own.
+  One transaction moves the card and every word per draft: a card that springs while its words snap, or the reverse, reads as a jolt.
+  A new word waits until the card has room (`Caption.lead`), then fades in from blurred and a little low; the word being said stays dim and without Parakeet's period.
+  A dropped word blurs out where it was, and a word that wraps onto another line crossfades: one that glides across the card to its new line looks broken.
+  The line that scrolls out fades before it reaches the card's edge, or the edge cuts it.
+  The mask's fade is linear in alpha, which looks steep on dark glass: check the top line over a dark backdrop.
 - The pill pops in like a bubble, from 0.9 with a little overshoot, and leaves without one.
 - Motion uses springs and stays smooth at 120 Hz on ProMotion; Reduce Motion swaps movement for fades.
 - Its frames hold the main thread: each one waits for WindowServer to show the last, which on a busy Mac takes tens of milliseconds.
@@ -27,5 +34,8 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
 - Dither the pill's shadow: over a dark background a soft shadow spans about five gray levels, which `.shadow` draws as rings, and a screen recording sharpens them.
 - VoiceOver announces listening, done, and errors.
 - Crisp at every scale factor, with a steady layout across states.
+
+Check motion in a recording of the real view on real drafts, never with the user's screen: `Tony --transcribe <file> -realtime YES -hud YES` draws the HUD in a window under the desktop picture, and ScreenCaptureKit records it with a display filter that includes only that window (the window filter samples a hidden window at about 25 fps).
+Step through it frame by frame at 120 fps around each draft: a word that jumps, a ghost that lingers, or a line the edge cuts shows there and not at full speed.
 
 Done when the HUD appears with no perceptible delay, keeps focus in the user's app, and a designer finds nothing to fix in a screen recording of a dictation played at 0.25x.

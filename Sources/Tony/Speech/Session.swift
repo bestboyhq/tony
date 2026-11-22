@@ -8,20 +8,33 @@ import OSLog
 /// Dictation transcribes in the background while the user still speaks: the first pause after ten seconds
 /// of talk closes a segment, so key up only transcribes what came after the last one, and Parakeet never sees
 /// the several minutes of audio where it degrades. Cutting inside a pause means no word is cut. And at each
-/// breath, the rest is drafted: when the user lets go without saying more, the draft is the text.
+/// breath, and every half second of speech, the rest is drafted: the HUD shows the drafts while the user speaks,
+/// and when the user lets go without saying more, the last draft is the text.
 actor Session {
+    /// A voice activity window at least this likely to be speech is speech. Silero reads speech near 1, even 35 dB down,
+    /// and noise at 0.33 or less: on LibriSpeech, quiet, in room noise, and with a soft first or last word, 0.3 changed
+    /// one word in 712 either way and cost a draft at key up in room noise, so 0.6 keeps a margin above noise.
     static let speechThreshold: Float = 0.6
     static let window = VadManager.chunkSize  // 256 ms at 16 kHz
     /// A background segment closes at the first pause after this much of it (in VAD windows): ~10 s, so it
     /// fits the model's one 15 s window. At 5 s and a breath, FLEURS dictations of three sentences came out
     /// with 16% more word errors in English than with 30 s.
     static let segmentAfter = 40
-    /// Past this (~2 min) with no pause, cut at the quietest window anyway.
-    static let forceAfter = 470
+    /// Past this (~14 s) with no pause, a segment closes at its quietest window after `segmentAfter`, so it and the two
+    /// seconds Parakeet hears after it fit the model's one 15 s window. Past it, FluidAudio cut the clip in speech
+    /// itself: of 329 LibriSpeech clips over 13 s, 46 lost their end mark and 12 had a period mid-sentence, against 7 and 2.
+    static let forceAfter = 54
     /// Parakeet hears this much (in VAD windows, ~2 s) on each side of a cut, and writes only the words that
     /// start on its side. Heard alone, a segment ends in a period and the next starts with a capital, so a
     /// thinking pause mid-sentence came out "like fire. And forget".
     static let context = 8
+    /// Silence (~0.5 s) Parakeet hears after a clip that ends where the speech does. FluidAudio decodes the last frame
+    /// again once the audio ends, where the period often comes, and with speech in that frame the decoder went on with
+    /// the sentence itself: "of the moment, and the other thing", at confidence 0.02 to 0.09. On 529 LibriSpeech clips,
+    /// this silence took lost end marks from 10 to 1 and invented endings from 2 to 0, and word errors fell too.
+    static let silence = 8000
+    /// The open segment is drafted again after this much audio (~0.45 s) while the user speaks, for the caption.
+    static let draftEvery = 7200
 
     private let asr: AsrManager
     private let vad: VadManager
@@ -33,10 +46,15 @@ actor Session {
     private var probabilities: [Float] = []
     /// Windows already handed to the model.
     private var committed = 0
-    private var texts: [(text: String, next: String?)] = []
+    private var texts: [(text: String, next: [String])] = []
     private var background: Task<Void, Never>?
-    /// The windows since the last cut, transcribed at the user's last breath.
-    private var draft: (windows: Range<Int>, text: Task<String, Never>)?
+    /// The windows since the last cut, transcribed at the user's last breath or half second, and the speech in them.
+    private var draft: (windows: Range<Int>, speech: Range<Int>, text: Task<String, Never>)?
+    /// Where the last draft started, in samples, and how many are still with the model.
+    private var drafted = 0, drafting = 0
+    private var drafts = 0, shown = 0
+    /// What the user said so far, for the HUD: the closed segments and the open one's last draft.
+    private(set) var preview = ""
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
     init(asr: AsrManager, vad: VadManager, languages: Set<Language>, words: Words?) {
@@ -60,14 +78,31 @@ actor Session {
             background = Task {
                 await previous?.value
                 texts.append(await transcribe(range, cut: true))
+                shown = drafts  // older drafts are of this segment
+                preview = Segments.join(texts)
             }
-        } else if let last = probabilities.indices.last, last > committed, draft?.windows != committed..<probabilities.count,
-                  probabilities[last] < Self.speechThreshold, probabilities[last - 1] >= Self.speechThreshold {
-            // A breath: what key up would transcribe, should the user say nothing more.
+        } else if let speech = Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold),
+                  draft?.windows.lowerBound != committed || draft?.speech != speech {
+            // A breath: what key up would transcribe, should the user say nothing more. Every half second of
+            // speech: what the caption shows, one draft at a time.
+            let last = probabilities.count - 1
+            let breath = last > committed && probabilities[last] < Self.speechThreshold && probabilities[last - 1] >= Self.speechThreshold
+            let due = drafting == 0 && samples.count - drafted >= Self.draftEvery
+            guard breath || due else { return }
             let windows = committed..<probabilities.count
-            draft = (windows, Task {
+            drafts += 1
+            let number = drafts
+            drafted = samples.count
+            drafting += 1
+            draft = (windows, speech, Task {
                 await previous?.value
-                return await transcribe(windows).text
+                let text = await transcribe(windows).text
+                drafting -= 1
+                if committed == windows.lowerBound, number > shown {
+                    shown = number
+                    preview = Segments.join(texts + [(text, [])])
+                }
+                return text
             })
         }
     }
@@ -80,9 +115,9 @@ actor Session {
             await classify(Array(samples[start...]) + [Float](repeating: 0, count: Self.window - tail))
         }
         await background?.value
-        // Nothing said since the draft: its speech, padded and trimmed, is what is left.
-        if let draft, draft.windows.lowerBound == committed, !probabilities[draft.windows.upperBound...].contains(where: { $0 >= Self.speechThreshold }) {
-            texts.append((await draft.text.value, nil))
+        // Nothing said since the draft: the same speech, padded and trimmed, is what is left, so the draft is its text.
+        if let draft, draft.windows.lowerBound == committed, draft.speech == Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold) {
+            texts.append((await draft.text.value, []))
         } else {
             texts.append(await transcribe(committed..<probabilities.count))
         }
@@ -103,21 +138,22 @@ actor Session {
     /// Transcribes the speech in `windows`, trimmed of silence at both ends; nothing when there is none.
     /// Speech models invent text ("Thank you.") from silence and noise. Parakeet also hears the `context`
     /// before a cut, and after it when the windows end at one, and writes only the words that start in the windows;
-    /// `next` is the word it heard after the cut.
+    /// `next` is the words it heard after the cut.
     ///
     /// Parakeet hears one language per clip: when the user switches language mid-dictation, it garbles one
     /// language or drops it. Then each language's run is transcribed on its own, if that makes Parakeet sure.
-    private func transcribe(_ windows: Range<Int>, cut: Bool = false) async -> (text: String, next: String?) {
-        guard let speech = Segments.speech(probabilities, in: windows, threshold: Self.speechThreshold) else { return ("", nil) }
+    private func transcribe(_ windows: Range<Int>, cut: Bool = false) async -> (text: String, next: [String]) {
+        guard let speech = Segments.speech(probabilities, in: windows, threshold: Self.speechThreshold) else { return ("", []) }
         let start = speech.lowerBound * Self.window
         let end = min(speech.upperBound * Self.window, samples.count)
         // Within the model's one window: past it, FluidAudio cuts the clip again, in speech. The words after a cut
         // come first: with a second of them or less, the segment still ended in a period ("how. Much").
-        let room = max(0, ASRConstants.maxModelSamples - (end - start))
+        let silence = cut ? 0 : Self.silence
+        let room = max(0, ASRConstants.maxModelSamples - (end - start) - silence)
         let after = cut ? min(Self.context * Self.window, room, samples.count - end) : 0
         let before = windows.lowerBound > 0 ? min(Self.context * Self.window, room - after, start) : 0
         let clip = start - before..<end + after
-        guard let whole = await recognize(clip, keeping: windows.lowerBound * Self.window..<windows.upperBound * Self.window) else { return ("", nil) }
+        guard let whole = await recognize(clip, keeping: windows.lowerBound * Self.window..<windows.upperBound * Self.window, silence: silence) else { return ("", []) }
         let offset = Double(start - clip.lowerBound) / 16000
         let tokens = whole.tokens.map { TokenTiming(token: $0.token, tokenId: $0.tokenId, startTime: $0.startTime - offset, endTime: $0.endTime - offset, confidence: $0.confidence) }
         guard let runs = Segments.languages(Array(probabilities[speech]), tokens: tokens, threshold: Self.speechThreshold, window: Self.window) else { return (whole.text, whole.next) }
@@ -136,21 +172,21 @@ actor Session {
         return (rescued ? texts.filter { !$0.isEmpty }.joined(separator: " ") : whole.text, whole.next)
     }
 
-    /// Parakeet's text for `clip` of the samples, with the user's words, and the tokens it heard, timed from the
-    /// clip's start; with `keep`, only the words that start in those samples, and the word it heard after them.
-    /// Nil when it fails.
-    private func recognize(_ clip: Range<Int>, keeping keep: Range<Int>? = nil) async -> (text: String, tokens: [TokenTiming], next: String?)? {
-        var audio = Array(samples[clip])
+    /// Parakeet's text for `clip` of the samples and `silence` samples of silence after it, with the user's words, and
+    /// the tokens it heard, timed from the clip's start; with `keep`, only the words that start in those samples, and
+    /// the words it heard after them. Nil when it fails.
+    private func recognize(_ clip: Range<Int>, keeping keep: Range<Int>? = nil, silence: Int = 0) async -> (text: String, tokens: [TokenTiming], next: [String])? {
+        var audio = Array(samples[clip]) + [Float](repeating: 0, count: silence)
         if audio.count < 16000 { audio += [Float](repeating: 0, count: 16000 - audio.count) }  // the model wants at least 0.3 s
         do {
             let started = Date()
             async let heard = try? words?.listen(audio)
             var decoder = TdtDecoderState.make(decoderLayers: await asr.decoderLayerCount)
             var result = try await asr.transcribe(audio, decoderState: &decoder, languages: languages)
-            var next: String?
+            var next: [String] = []
             if let keep {
                 let from = Double(keep.lowerBound - clip.lowerBound) / 16000, to = Double(keep.upperBound - clip.lowerBound) / 16000
-                next = Segments.words(of: result, startingIn: to..<Double.infinity).text.split(separator: " ").first.map(String.init)
+                next = Segments.words(of: result, startingIn: to..<Double.infinity).text.split(separator: " ").map(String.init)
                 result = Segments.words(of: result, startingIn: from..<to)
             }
             guard let words, let heard = await heard else {
@@ -178,15 +214,15 @@ nonisolated enum Segments {
     }
 
     /// Where to close a background segment that starts at window `start`, if it is time: at the start of the
-    /// first pause past its first `after` windows, or at the quietest window once `force` windows wait without
-    /// one; either with `context` windows heard after it. A pause is two quiet windows, half a second (Silero
+    /// first pause past its first `after` windows, or at the quietest window past them once `force` windows wait
+    /// without one; either with `context` windows heard after it. A pause is two quiet windows, half a second (Silero
     /// reads about 0.2 between sentences): one quiet window is a breath, often mid-sentence, and cutting there
     /// cost words on both sides. The word after a pause starts at its end, and Parakeet times it up to 100 ms
     /// early: cut in the middle, the word came out on both sides of the cut, or on neither.
     static func cut(_ probabilities: [Float], from start: Int, after: Int, force: Int, context: Int = 1, quiet: Float = 0.4) -> Int? {
         if let pause = probabilities.indices.dropFirst(start + after).dropLast(context).first(where: { probabilities[$0] < quiet && probabilities[$0 + 1] < quiet }) { return pause }
         guard probabilities.count - start >= force else { return nil }
-        return ((probabilities.count - after)...(probabilities.count - context)).min { probabilities[$0] < probabilities[$1] }
+        return ((start + after)...(probabilities.count - context)).min { probabilities[$0] < probabilities[$1] }
     }
 
     /// `result` with only the words whose first token starts in `seconds`, each with its punctuation.
@@ -202,21 +238,37 @@ nonisolated enum Segments {
                          duration: result.duration, processingTime: result.processingTime, tokenTimings: tokens)
     }
 
-    /// The segments' texts as one. Parakeet often starts a sentence at a cut, even when it hears two seconds before
-    /// it ("wyślij mi Proszę"), so the word after a cut takes its case from the segment before it, which heard it
-    /// mid-clip, where both heard the same word.
-    static func join(_ parts: [(text: String, next: String?)]) -> String {
-        var texts: [String] = [], next: String?
+    /// The segments' texts as one, each segment with `next`, the words the segment before it heard after the cut.
+    /// - A cut in speech splits a word, and two passes time it up to 100 ms apart, so it came out on both sides of the
+    ///   cut or on neither ("a a vivacity", "that him upon"). Where `next` lines up with the segment two words later,
+    ///   the doubled words go, or the lost ones come back from `next`.
+    /// - Parakeet often starts a sentence at a cut, even when it hears two seconds before it ("wyślij mi Proszę"), so
+    ///   the word after a cut takes its case from the segment before it, which heard it mid-clip.
+    static func join(_ parts: [(text: String, next: [String])]) -> String {
+        // ponytail: a word that comes back from `next` is Parakeet's, without the user's words; give `next` the
+        // user's words too if one goes missing at a cut.
+        let same = { (a: ArraySlice<String>, b: ArraySlice<String>) in
+            !a.isEmpty && a.count == b.count && zip(a, b).allSatisfy { !$0.filter(\.isLetter).isEmpty && $0.filter(\.isLetter).lowercased() == $1.filter(\.isLetter).lowercased() }
+        }
+        var words: [String] = [], next: [String] = []
         for part in parts {
-            var text = part.text
-            if let next, let word = text.split(separator: " ").first, next.first?.isLetter == true, word.first?.isLetter == true,
-               word.filter(\.isLetter).lowercased() == next.filter(\.isLetter).lowercased() {
-                text = String(next.prefix(1) + text.dropFirst())
+            var text = part.text.split(separator: " ").map(String.init)
+            var lost = 0
+            if !same(next.prefix(1), text.prefix(1)) {
+                if let doubled = (1...2).first(where: { same(next.prefix(2), text.dropFirst($0).prefix(2)) && same(text.prefix($0), words.suffix($0)) }) {
+                    text.removeFirst(doubled)
+                } else if let missing = (1...2).first(where: { same(next.dropFirst($0).prefix(2), text.prefix(2)) }) {
+                    text = Array(next.prefix(missing)) + text
+                    lost = missing
+                }
             }
-            if !text.isEmpty { texts.append(text) }
+            if same(next.dropFirst(lost).prefix(1), text.dropFirst(lost).prefix(1)), text[lost].first?.isLetter == true, next[lost].first?.isLetter == true {
+                text[lost] = String(next[lost].prefix(1) + text[lost].dropFirst())
+            }
+            words += text
             next = part.next
         }
-        return texts.joined(separator: " ")
+        return words.joined(separator: " ")
     }
 
     /// Where Parakeet lost the language in a clip, as runs of sure and unsure parts in samples; nil when

@@ -34,16 +34,18 @@ final class Dictation {
     private(set) var phase = Phase.idle {
         didSet {
             if phase != oldValue { onPhase?(phase) }
-            if (phase == .listening) != (oldValue == .listening) { phase == .listening ? ducking.duck() : ducking.restore() }
+            if (phase == .listening) != (oldValue == .listening) { phase == .listening ? ducking?.duck() : ducking?.restore() }
         }
     }
     private(set) var handsFree = false
+    /// What the user said so far in this dictation, for the HUD's caption.
+    private(set) var preview = ""
     /// The last dictation, in memory only, for the menu bar to copy or paste again.
     private(set) var lastText: String?
     private(set) var stats = Stats.load()
 
     @ObservationIgnored let mic = Mic()
-    @ObservationIgnored let ducking = Ducking()
+    @ObservationIgnored let ducking: Ducking?
     @ObservationIgnored private(set) var hotkey: Hotkey!
     @ObservationIgnored var languages: Set<Language> = []
     @ObservationIgnored var onPhase: ((Phase) -> Void)?
@@ -66,8 +68,9 @@ final class Dictation {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private let log = Logger(subsystem: "com.bestboyhq.tony", category: "dictation")
 
-    init(speech: Speech) {
+    init(speech: Speech, ducking: Ducking? = Ducking()) {
         self.speech = speech
+        self.ducking = ducking
         hotkey = Hotkey { [weak self] input in self?.handle(input) }
         mic.onInterrupted = { [weak self] in
             Task { @MainActor in self?.interrupted() }
@@ -131,6 +134,7 @@ final class Dictation {
         self.session = session
         keyDown = .now
         handsFree = false
+        preview = ""
         phase = .listening
         hotkey.dictating.store(true, ordering: .relaxed)
         announce("Listening")
@@ -139,7 +143,17 @@ final class Dictation {
         self.feed = feed
         // The user waits on this work: user-initiated, so a busy Mac (a build, an agent) doesn't put the
         // voice activity detection behind, which key up would then wait for.
-        feeder = Task.detached(priority: .userInitiated) { for await chunk in stream { await session.append(chunk) } }
+        feeder = Task.detached(priority: .userInitiated) { [weak self] in
+            var shown = ""
+            for await chunk in stream {
+                await session.append(chunk)
+                let preview = await session.preview
+                guard preview != shown else { continue }
+                shown = preview
+                // Not awaited: the main thread waits on the HUD's frames, and the voice activity detection must not.
+                Task { @MainActor in if self?.generation == generation { self?.preview = Cleanup.removeFillers(preview) } }
+            }
+        }
         cursor = Task.detached(priority: .userInitiated) {
             await previous?.value
             return Cursor.textBefore()
@@ -242,6 +256,7 @@ final class Dictation {
         session = nil
         feed = nil
         feeder = nil
+        preview = ""
         cursor = nil
         heard = nil
         finishing = nil
@@ -272,6 +287,13 @@ final class Dictation {
             await Usage.journey.mark("first_dictation")
             await Usage.journey.active()  // a new day, for a Tony that runs for days
         }
+    }
+
+    /// The HUD as it is while the user has said `preview`, or gone: for `Tony --transcribe -hud YES`, which has no
+    /// mic, key, or paste, and no ducking.
+    func show(_ preview: String?) {
+        self.preview = preview ?? ""
+        phase = preview == nil ? .idle : .listening
     }
 
     /// Pastes the last dictation again, from the menu.

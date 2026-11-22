@@ -23,7 +23,7 @@ Every domain obeys these invariants:
 - **Instant.** Listening starts on key down, so the first word is captured, and the text lands about 100 ms after key up.
 - **Every word survives.** Every dictation stays on the clipboard, so text that cannot be inserted (a secure field, an app that ignores paste) is one ⌘V away, and the menu keeps the last one.
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
-- **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
+- **Idle is free.** Between dictations Tony holds no audio device, so the mic is closed (no orange dot) and a Bluetooth headset keeps full quality, the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
   No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0017).
   Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats) or sets `DO_NOT_TRACK`, and never hold what was said or typed, which app, the user's words, or a name or path.
@@ -81,6 +81,7 @@ The site's footer names the brand, like every Bestboy site's: `© 2026 Bestboy a
   `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
 - `open --env TONY_EVENTS_URL=http://127.0.0.1:8787/api/events release/Tony.app` points a development build's usage stats at a local stand-in for bestboy.dev's relay; without it, a development build sends none.
+- `release/Tony.app/Contents/MacOS/Tony --transcribe <files> -realtime YES` feeds audio files as fast as the mic would and prints each draft, the text, and the key up time; `-hud YES` also draws the HUD on its drafts in a window under the desktop picture, for a window recording that shows nothing on the screen.
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, that `docs/adr/README.md` lists every ADR, and that About, `NOTICE`, and the copyright line agree (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.

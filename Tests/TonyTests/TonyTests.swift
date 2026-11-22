@@ -169,10 +169,18 @@ import os
 
     /// The segment before a cut heard the word after it mid-sentence, the segment after as its first word.
     @Test func joinsInTheCaseHeardBeforeTheCut() {
-        #expect(Segments.join([("to wyślij mi", "proszę"), ("Proszę zaproszenie.", nil)]) == "to wyślij mi proszę zaproszenie.")
-        #expect(Segments.join([("bo w czwartek?", "Mam"), ("mam już", nil)]) == "bo w czwartek? Mam już")
-        #expect(Segments.join([("I talked to", "malina"), ("Malini, and", nil)]) == "I talked to Malini, and")  // another word
-        #expect(Segments.join([("so", "for"), ("", nil), ("For", nil)]) == "so For")  // silence between
+        #expect(Segments.join([("to wyślij mi", ["proszę"]), ("Proszę zaproszenie.", [])]) == "to wyślij mi proszę zaproszenie.")
+        #expect(Segments.join([("bo w czwartek?", ["Mam"]), ("mam już", [])]) == "bo w czwartek? Mam już")
+        #expect(Segments.join([("I talked to", ["malina"]), ("Malini, and", [])]) == "I talked to Malini, and")  // another word
+        #expect(Segments.join([("so", ["for"]), ("", []), ("For", [])]) == "so For")  // silence between
+    }
+
+    /// LibriSpeech, cut in speech: the word at the cut came out on both sides, or on neither.
+    @Test func joinsAWordSplitByACutOnce() {
+        #expect(Segments.join([("in her thoughts a", ["vivacity", "in"]), ("a vivacity in her conversation", [])]) == "in her thoughts a vivacity in her conversation")
+        #expect(Segments.join([("the father that", ["begot", "him", "upon"]), ("Him upon those", [])]) == "the father that begot him upon those")
+        #expect(Segments.join([("electricity that could", ["that", "could"]), ("that could not", [])]) == "electricity that could that could not")  // said twice
+        #expect(Segments.join([("it was the", ["end", "of"]), ("an end of it", [])]) == "it was the an end of it")  // another word
     }
 
     @Test func forcesACutWithoutAPause() {
@@ -180,6 +188,11 @@ import os
         p[110] = 0.5
         #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 110)
         #expect(Segments.cut(Array(p[..<99]), from: 0, after: 20, force: 100) == nil)  // not past `force` yet
+        p[30] = 0.4
+        #expect(Segments.cut(Array(p[..<100]), from: 0, after: 20, force: 100) == 30)  // the quietest past `after`
+        // A forced segment and the context after it, or the open one and the silence after it, fit the model's one
+        // window, or FluidAudio cuts it in speech.
+        #expect(Session.forceAfter * Session.window + Session.silence <= ASRConstants.maxModelSamples)
     }
 
     /// "Can you send me the report", a pause, "do końca dnia": 20 windows of 256 ms, the pause in windows 6 and 7.
@@ -328,7 +341,7 @@ import os
 /// Opens each wired mic for a second and a half; skipped where Tony may not use the mic.
 @Suite struct MicTests {
     @Test(.enabled(if: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized))
-    func oneEngineHearsEveryMic() async throws {
+    func hearsEveryMic() async throws {
         let mic = Mic()
         for device in Devices.inputs() where device.isBuiltIn || device.transport == kAudioDeviceTransportTypeUSB {
             let count = Atomic<Int>(0)
@@ -340,11 +353,12 @@ import os
             let open = (ContinuousClock.now - started) / .seconds(1)
             let summary = await mic.stop().value
             #expect(summary.device?.uid == device.uid)
-            // 16 kHz while open, less up to a second the device takes to start (half a second for a Studio Display)
-            // and to restart after the configuration change its selection posts.
+            // 16 kHz while open, less up to a second the device takes to start (half a second for a Studio Display).
             let expected = Int(16_000 * open)
             #expect((expected - 16_000...expected + 1_000).contains(count.load(ordering: .relaxed)), "\(device.name), open \(open) s")
         }
+        // AVAudioEngine's aggregate of the default input and output pulls a headset that connects into call quality (ADR 0018).
+        #expect(!Devices.inputs().contains { $0.uid.hasPrefix("CADefaultDeviceAggregate") })
     }
 }
 
@@ -361,7 +375,7 @@ import os
     /// Over the dark gray of a dark window, the shadow below the pill blends between gray levels instead of stepping
     /// through them in rings, and the glass above it stays clear.
     @Test func ditheredOverDarkGray() throws {
-        let image = Shadow.image(scale: 2, dark: true)
+        let image = Shadow.image(radius: Shadow.height / 2, scale: 2, dark: true)
         let data = try #require(image.dataProvider?.data as Data?)
         let gray = { (x: Int, y: Int) in (43 * (1 - Double(data[y * image.bytesPerRow + x * 4 + 3]) / 255)).rounded() }
         let middle = image.width / 2, strip = middle - 32..<middle + 32  // the straight part, 32 pt wide at 2x
@@ -371,6 +385,34 @@ import os
         let between = rows.filter { abs($0 - $0.rounded()) > 0.1 }
         #expect(rows.count > 30)
         #expect(between.count * 4 > rows.count * 3, "\(rows.count - between.count) of \(rows.count) rows sit on one gray level")
+    }
+}
+
+/// The caption (ADR 0019): a word already shown keeps its time, new ones come one after another once the card has
+/// room, the word being said stays dim and without Parakeet's period, and a draft that swaps a word brings a new one.
+@Suite struct CaptionTests {
+    @Test func wordsKeepTheirTimes() {
+        let first = Caption.words("Is it actually.", after: [], at: 0, listening: true)
+        #expect(first.map(\.text) == ["Is", "it", "actually"])
+        #expect(first[0].born == Caption.lead && first[0].born < first[1].born && first[1].born < first[2].born)
+        #expect(first.map { $0.settled != nil } == [true, true, false])
+        let second = Caption.words("Is it actually possible?", after: first, at: 1, listening: true)
+        #expect(second.prefix(3).map(\.born) == first.map(\.born))
+        #expect(second[2].settled == 1 && second[3].settled == nil)
+        #expect(second[3].text == "possible" && second[3].born == 1 + Caption.lead)
+        let swapped = Caption.words("Is it actually impossible", after: second, at: 2, listening: true)
+        #expect(swapped.count == 4 && swapped[3].born > second[3].born)
+        let done = Caption.words("is it actually impossible?", after: swapped, at: 3, listening: false)
+        #expect(done.map(\.born) == swapped.map(\.born) && done.map(\.text) == ["is", "it", "actually", "impossible?"])
+        #expect(done.allSatisfy { $0.settled != nil })
+    }
+
+    @Test func linesWrapInOrder() {
+        let words = Caption.words(String(repeating: "transcription ", count: 40), after: [], at: 0, listening: false)
+        let lines = Caption.lines(words, width: 500)
+        #expect(lines.flatMap { $0 }.map(\.id) == words.map(\.id))
+        #expect(lines.count > 1 && Set(lines.dropLast().map(\.count)).count == 1)
+        #expect(Caption.lines([], width: 500).isEmpty)
     }
 }
 

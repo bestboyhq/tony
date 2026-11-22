@@ -108,6 +108,7 @@
 			'25 languages, detected as you speak',
 			'Your words: names, brands, and jargon spelled your way',
 			'Filler words removed',
+			'Your words shown as you speak',
 		],
 		softwareHelp: { '@type': 'CreativeWork', url: `${SITE_URL}/docs` },
 		sameAs: [GITHUB_URL],
@@ -128,7 +129,7 @@
 		},
 		{
 			title: 'Speak your prompt',
-			body: 'Ramble if you like. Tony transcribes on your Mac’s Neural Engine as you talk, so even five minutes lands at once.',
+			body: 'Ramble if you like. Your words show above the pill as you talk, and Tony transcribes on your Mac’s Neural Engine as you go, so even five minutes lands at once.',
 		},
 		{
 			title: 'Let go',
