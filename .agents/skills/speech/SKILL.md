@@ -23,15 +23,19 @@ Speech to text on the Neural Engine.
   A pause is two quiet voice activity windows, half a second; one is a breath, often mid-sentence.
   Parakeet hears each segment alone and ends it as a sentence, so short segments cost words: cutting at each breath after five seconds made 16% more word errors in English than 30 s segments, and ten seconds to a pause made none more.
   Ten seconds also keeps a segment within the model's one 15 s window, which costs about the same at any length up to it.
+  With no pause by about 14 s (`Session.forceAfter`), the segment closes at its quietest window past ten seconds, so it and the two seconds after it still fit that window.
+  Past it, FluidAudio cut the clip in speech itself: of 329 LibriSpeech clips over 13 s, 46 lost their end mark and 12 had a period mid-sentence ("in tune. and"), against 7 and 2 with the forced cut.
   At each breath, the rest of the segment is drafted, and when the user lets go without saying more, the draft is the text: key up took 2 ms (median) against 58 ms for five-second segments.
   The draft covers the same windows key up would, so it changes no word.
   Every 0.45 s of speech (`Session.draftEvery`), the rest is drafted too, one draft at a time, for the HUD's caption (ADR 0019): `Session.preview` is the closed segments and the latest draft.
   Reuse a draft at key up only when its speech is the speech key up would transcribe, so the caption never changes the text.
-  A draft past the model's one window costs a pass per window, so the caption waits for the cut there.
-  Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
+  Cut inside a pause where there is one: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
   People pause to think mid-sentence, and a segment heard alone ends in a period and the next starts with a capital: "like fire. And forget", "So For example".
   So Parakeet hears two seconds on each side of a cut, and each side writes only the words that start on its side (`Segments.words`).
   The cut is at the start of the pause: Parakeet times the word after a pause up to 100 ms early, and a cut in the middle of the pause wrote that word on both sides or on neither.
+  A forced cut is in speech, and the two sides timed the word at it up to 100 ms apart, so it came out on both sides or on neither ("a a vivacity", "that him upon").
+  So the segment before a cut also hands on the words it heard after it, and where those line up with the segment after, two words later on either side, `Segments.join` drops the doubled words or brings back the lost ones.
+  Without that, 303 forced cuts cost 15 doubled and 8 lost words; with it, word errors fell below FluidAudio's own cuts (1.93% against 1.95%).
   A segment closes once those two seconds after its cut are in; key up before that hears the segment and the rest as one clip.
   The context shrinks to keep each clip within the model's 15 s window: past it, FluidAudio cuts the clip again, in speech.
   Parakeet often starts a sentence at a cut even when it hears two seconds before it ("wyślij mi Proszę"), so the word after a cut takes its case from the segment before it, which heard it mid-clip (`Segments.join`).

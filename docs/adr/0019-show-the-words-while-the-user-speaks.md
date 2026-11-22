@@ -16,7 +16,7 @@ Of two prototypes, the words in the pill or a caption above it, the user chose t
 - While the user speaks, `Session` drafts the open segment again after each `Session.draftEvery` of audio (7,200 samples, ~0.45 s), one draft at a time, and still at each breath.
   `Session.preview` is the closed segments and the open one's latest draft, and `Dictation.preview`, without filler words, is what the HUD shows.
   The feeder hands it to the main thread without waiting, so the voice activity detection never waits on the HUD's frames.
-- A draft runs only while the open segment's speech fits the model's one window: past it, a draft costs a pass per window, so the caption waits for the next cut.
+- A segment with no pause closes by about 14 s (`Session.forceAfter`), so every draft fits the model's one window and costs one pass.
 - At key up, a draft whose speech is the speech key up would transcribe is the text, so drafting changes no word and costs key up no pass.
 - `Caption` in `HUDView.swift` shows the preview above the pill, 532 pt wide, on the pill's glass, at most three lines.
   - Each word is a view of its own, named by the time it arrived, so a word the next draft keeps stays where it is.
@@ -37,6 +37,6 @@ Of two prototypes, the words in the pill or a caption above it, the user chose t
 - The text is the same as without drafts, and key up measured 62 to 75 ms on real-time runs, against 56 to 113 ms before.
 - The Neural Engine works every half second while the user speaks; between dictations Tony is still idle.
 - Key up can wait behind a draft that is still running, at most one pass.
-- After about 15 s of talk with no pause, the caption stops until the next cut (a `ponytail:` comment in `Session.append` marks it).
+- The caption keeps up through talk with no pause, since a segment never outgrows the model's window.
 - `CaptionTests` fails when a kept word loses its time, new words come out of order, the word being said keeps its period, or lines break out of order.
   Nothing automatic checks the motion: the HUD skill's done check, a recording at 0.25x, does.

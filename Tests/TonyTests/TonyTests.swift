@@ -169,10 +169,18 @@ import os
 
     /// The segment before a cut heard the word after it mid-sentence, the segment after as its first word.
     @Test func joinsInTheCaseHeardBeforeTheCut() {
-        #expect(Segments.join([("to wyślij mi", "proszę"), ("Proszę zaproszenie.", nil)]) == "to wyślij mi proszę zaproszenie.")
-        #expect(Segments.join([("bo w czwartek?", "Mam"), ("mam już", nil)]) == "bo w czwartek? Mam już")
-        #expect(Segments.join([("I talked to", "malina"), ("Malini, and", nil)]) == "I talked to Malini, and")  // another word
-        #expect(Segments.join([("so", "for"), ("", nil), ("For", nil)]) == "so For")  // silence between
+        #expect(Segments.join([("to wyślij mi", ["proszę"]), ("Proszę zaproszenie.", [])]) == "to wyślij mi proszę zaproszenie.")
+        #expect(Segments.join([("bo w czwartek?", ["Mam"]), ("mam już", [])]) == "bo w czwartek? Mam już")
+        #expect(Segments.join([("I talked to", ["malina"]), ("Malini, and", [])]) == "I talked to Malini, and")  // another word
+        #expect(Segments.join([("so", ["for"]), ("", []), ("For", [])]) == "so For")  // silence between
+    }
+
+    /// LibriSpeech, cut in speech: the word at the cut came out on both sides, or on neither.
+    @Test func joinsAWordSplitByACutOnce() {
+        #expect(Segments.join([("in her thoughts a", ["vivacity", "in"]), ("a vivacity in her conversation", [])]) == "in her thoughts a vivacity in her conversation")
+        #expect(Segments.join([("the father that", ["begot", "him", "upon"]), ("Him upon those", [])]) == "the father that begot him upon those")
+        #expect(Segments.join([("electricity that could", ["that", "could"]), ("that could not", [])]) == "electricity that could that could not")  // said twice
+        #expect(Segments.join([("it was the", ["end", "of"]), ("an end of it", [])]) == "it was the an end of it")  // another word
     }
 
     @Test func forcesACutWithoutAPause() {
@@ -180,6 +188,10 @@ import os
         p[110] = 0.5
         #expect(Segments.cut(p, from: 0, after: 20, force: 100) == 110)
         #expect(Segments.cut(Array(p[..<99]), from: 0, after: 20, force: 100) == nil)  // not past `force` yet
+        p[30] = 0.4
+        #expect(Segments.cut(Array(p[..<100]), from: 0, after: 20, force: 100) == 30)  // the quietest past `after`
+        // A forced segment and the context after it fit the model's one window, or FluidAudio cuts it in speech.
+        #expect(Session.forceAfter * Session.window <= ASRConstants.maxModelSamples)
     }
 
     /// "Can you send me the report", a pause, "do końca dnia": 20 windows of 256 ms, the pause in windows 6 and 7.
