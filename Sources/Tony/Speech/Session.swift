@@ -8,7 +8,8 @@ import OSLog
 /// Dictation transcribes in the background while the user still speaks: the first pause after ten seconds
 /// of talk closes a segment, so key up only transcribes what came after the last one, and Parakeet never sees
 /// the several minutes of audio where it degrades. Cutting inside a pause means no word is cut. And at each
-/// breath, the rest is drafted: when the user lets go without saying more, the draft is the text.
+/// breath, and every half second of speech, the rest is drafted: the HUD shows the drafts while the user speaks,
+/// and when the user lets go without saying more, the last draft is the text.
 actor Session {
     static let speechThreshold: Float = 0.6
     static let window = VadManager.chunkSize  // 256 ms at 16 kHz
@@ -22,6 +23,8 @@ actor Session {
     /// start on its side. Heard alone, a segment ends in a period and the next starts with a capital, so a
     /// thinking pause mid-sentence came out "like fire. And forget".
     static let context = 8
+    /// The open segment is drafted again after this much audio (~0.45 s) while the user speaks, for the caption.
+    static let draftEvery = 7200
 
     private let asr: AsrManager
     private let vad: VadManager
@@ -35,8 +38,13 @@ actor Session {
     private var committed = 0
     private var texts: [(text: String, next: String?)] = []
     private var background: Task<Void, Never>?
-    /// The windows since the last cut, transcribed at the user's last breath.
-    private var draft: (windows: Range<Int>, text: Task<String, Never>)?
+    /// The windows since the last cut, transcribed at the user's last breath or half second, and the speech in them.
+    private var draft: (windows: Range<Int>, speech: Range<Int>, text: Task<String, Never>)?
+    /// Where the last draft started, in samples, and how many are still with the model.
+    private var drafted = 0, drafting = 0
+    private var drafts = 0, shown = 0
+    /// What the user said so far, for the HUD: the closed segments and the open one's last draft.
+    private(set) var preview = ""
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "speech")
 
     init(asr: AsrManager, vad: VadManager, languages: Set<Language>, words: Words?) {
@@ -60,14 +68,32 @@ actor Session {
             background = Task {
                 await previous?.value
                 texts.append(await transcribe(range, cut: true))
+                shown = drafts  // older drafts are of this segment
+                preview = Segments.join(texts)
             }
-        } else if let last = probabilities.indices.last, last > committed, draft?.windows != committed..<probabilities.count,
-                  probabilities[last] < Self.speechThreshold, probabilities[last - 1] >= Self.speechThreshold {
-            // A breath: what key up would transcribe, should the user say nothing more.
+        } else if let speech = Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold),
+                  draft?.windows.lowerBound != committed || draft?.speech != speech {
+            // A breath: what key up would transcribe, should the user say nothing more. Every half second of
+            // speech: what the caption shows, one draft at a time. ponytail: past the model's one window (5 s with
+            // no pause after the first 10), a draft costs a pass per window, so the caption waits for the cut.
+            let last = probabilities.count - 1
+            let breath = last > committed && probabilities[last] < Self.speechThreshold && probabilities[last - 1] >= Self.speechThreshold
+            let due = drafting == 0 && samples.count - drafted >= Self.draftEvery && speech.count * Self.window <= ASRConstants.maxModelSamples
+            guard breath || due else { return }
             let windows = committed..<probabilities.count
-            draft = (windows, Task {
+            drafts += 1
+            let number = drafts
+            drafted = samples.count
+            drafting += 1
+            draft = (windows, speech, Task {
                 await previous?.value
-                return await transcribe(windows).text
+                let text = await transcribe(windows).text
+                drafting -= 1
+                if committed == windows.lowerBound, number > shown {
+                    shown = number
+                    preview = Segments.join(texts + [(text, nil)])
+                }
+                return text
             })
         }
     }
@@ -80,8 +106,8 @@ actor Session {
             await classify(Array(samples[start...]) + [Float](repeating: 0, count: Self.window - tail))
         }
         await background?.value
-        // Nothing said since the draft: its speech, padded and trimmed, is what is left.
-        if let draft, draft.windows.lowerBound == committed, !probabilities[draft.windows.upperBound...].contains(where: { $0 >= Self.speechThreshold }) {
+        // Nothing said since the draft: the same speech, padded and trimmed, is what is left, so the draft is its text.
+        if let draft, draft.windows.lowerBound == committed, draft.speech == Segments.speech(probabilities, in: committed..<probabilities.count, threshold: Self.speechThreshold) {
             texts.append((await draft.text.value, nil))
         } else {
             texts.append(await transcribe(committed..<probabilities.count))

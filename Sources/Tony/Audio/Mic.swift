@@ -31,6 +31,12 @@ nonisolated final class Mic: @unchecked Sendable {
 
     /// RMS of the latest audio callback (about 10 ms): the HUD reads it every frame.
     var level: Float { Float(bitPattern: capture.level.load(ordering: .relaxed)) }
+
+    /// Shows the level of `samples` as if the mic heard them: for `Tony --transcribe -hud YES`, which has no mic.
+    func show(_ samples: [Float]) {
+        let rms = (samples.reduce(0) { $0 + $1 * $1 } / Float(max(1, samples.count))).squareRoot()
+        capture.level.store(rms.bitPattern, ordering: .relaxed)
+    }
     /// Called on the mic queue when the device goes away mid-dictation: what was heard is kept.
     var onInterrupted: (@Sendable () -> Void)?
 

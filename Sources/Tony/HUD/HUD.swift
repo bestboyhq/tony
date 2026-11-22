@@ -7,7 +7,8 @@ final class HUD {
     private let panel: Panel
     private let dictation: Dictation
     private var hide: Task<Void, Never>?
-    static let size = NSSize(width: 640, height: 96)
+    /// Room for the pill, the caption above it, and their shadows.
+    static let size = NSSize(width: 640, height: 200)
 
     init(dictation: Dictation, mic: Mic) {
         self.dictation = dictation
