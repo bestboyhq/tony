@@ -38,6 +38,9 @@ Speech to text on the Neural Engine.
   Without that, 303 forced cuts cost 15 doubled and 8 lost words; with it, word errors fell below FluidAudio's own cuts (1.93% against 1.95%).
   A segment closes once those two seconds after its cut are in; key up before that hears the segment and the rest as one clip.
   The context shrinks to keep each clip within the model's 15 s window: past it, FluidAudio cuts the clip again, in speech.
+  A clip that ends where the speech does gets half a second of silence after it (`Session.silence`).
+  FluidAudio decodes the last frame again once the audio ends, where the period often comes, and with speech in that frame the decoder went on with the sentence itself: "of the moment, and the other thing", at confidence 0.02 to 0.09.
+  Turning that pass off lost the end mark of 34 in 200 clips; the silence instead took lost end marks from 10 to 1 and invented endings from 2 to 0 on 529 LibriSpeech-PC clips, with fewer word errors too.
   Parakeet often starts a sentence at a cut even when it hears two seconds before it ("wyślij mi Proszę"), so the word after a cut takes its case from the segment before it, which heard it mid-clip (`Segments.join`).
   Check changes there on real speech fed in real time (`Tony --transcribe <files> -realtime YES`) with release builds, against references with punctuation: LibriSpeech test-clean with LibriSpeech-PC, and FLEURS for Polish.
   Also check dictations with thinking pauses mid-sentence (`say` with `[[slnc 800]]` between words), scored with capitals and punctuation: word error rate alone misses these.

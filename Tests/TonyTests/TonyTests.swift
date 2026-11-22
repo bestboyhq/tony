@@ -190,8 +190,9 @@ import os
         #expect(Segments.cut(Array(p[..<99]), from: 0, after: 20, force: 100) == nil)  // not past `force` yet
         p[30] = 0.4
         #expect(Segments.cut(Array(p[..<100]), from: 0, after: 20, force: 100) == 30)  // the quietest past `after`
-        // A forced segment and the context after it fit the model's one window, or FluidAudio cuts it in speech.
-        #expect(Session.forceAfter * Session.window <= ASRConstants.maxModelSamples)
+        // A forced segment and the context after it, or the open one and the silence after it, fit the model's one
+        // window, or FluidAudio cuts it in speech.
+        #expect(Session.forceAfter * Session.window + Session.silence <= ASRConstants.maxModelSamples)
     }
 
     /// "Can you send me the report", a pause, "do końca dnia": 20 windows of 256 ms, the pause in windows 6 and 7.

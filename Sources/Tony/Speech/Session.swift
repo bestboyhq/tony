@@ -28,6 +28,11 @@ actor Session {
     /// start on its side. Heard alone, a segment ends in a period and the next starts with a capital, so a
     /// thinking pause mid-sentence came out "like fire. And forget".
     static let context = 8
+    /// Silence (~0.5 s) Parakeet hears after a clip that ends where the speech does. FluidAudio decodes the last frame
+    /// again once the audio ends, where the period often comes, and with speech in that frame the decoder went on with
+    /// the sentence itself: "of the moment, and the other thing", at confidence 0.02 to 0.09. On 529 LibriSpeech clips,
+    /// this silence took lost end marks from 10 to 1 and invented endings from 2 to 0, and word errors fell too.
+    static let silence = 8000
     /// The open segment is drafted again after this much audio (~0.45 s) while the user speaks, for the caption.
     static let draftEvery = 7200
 
@@ -143,11 +148,12 @@ actor Session {
         let end = min(speech.upperBound * Self.window, samples.count)
         // Within the model's one window: past it, FluidAudio cuts the clip again, in speech. The words after a cut
         // come first: with a second of them or less, the segment still ended in a period ("how. Much").
-        let room = max(0, ASRConstants.maxModelSamples - (end - start))
+        let silence = cut ? 0 : Self.silence
+        let room = max(0, ASRConstants.maxModelSamples - (end - start) - silence)
         let after = cut ? min(Self.context * Self.window, room, samples.count - end) : 0
         let before = windows.lowerBound > 0 ? min(Self.context * Self.window, room - after, start) : 0
         let clip = start - before..<end + after
-        guard let whole = await recognize(clip, keeping: windows.lowerBound * Self.window..<windows.upperBound * Self.window) else { return ("", []) }
+        guard let whole = await recognize(clip, keeping: windows.lowerBound * Self.window..<windows.upperBound * Self.window, silence: silence) else { return ("", []) }
         let offset = Double(start - clip.lowerBound) / 16000
         let tokens = whole.tokens.map { TokenTiming(token: $0.token, tokenId: $0.tokenId, startTime: $0.startTime - offset, endTime: $0.endTime - offset, confidence: $0.confidence) }
         guard let runs = Segments.languages(Array(probabilities[speech]), tokens: tokens, threshold: Self.speechThreshold, window: Self.window) else { return (whole.text, whole.next) }
@@ -166,11 +172,11 @@ actor Session {
         return (rescued ? texts.filter { !$0.isEmpty }.joined(separator: " ") : whole.text, whole.next)
     }
 
-    /// Parakeet's text for `clip` of the samples, with the user's words, and the tokens it heard, timed from the
-    /// clip's start; with `keep`, only the words that start in those samples, and the words it heard after them.
-    /// Nil when it fails.
-    private func recognize(_ clip: Range<Int>, keeping keep: Range<Int>? = nil) async -> (text: String, tokens: [TokenTiming], next: [String])? {
-        var audio = Array(samples[clip])
+    /// Parakeet's text for `clip` of the samples and `silence` samples of silence after it, with the user's words, and
+    /// the tokens it heard, timed from the clip's start; with `keep`, only the words that start in those samples, and
+    /// the words it heard after them. Nil when it fails.
+    private func recognize(_ clip: Range<Int>, keeping keep: Range<Int>? = nil, silence: Int = 0) async -> (text: String, tokens: [TokenTiming], next: [String])? {
+        var audio = Array(samples[clip]) + [Float](repeating: 0, count: silence)
         if audio.count < 16000 { audio += [Float](repeating: 0, count: 16000 - audio.count) }  // the model wants at least 0.3 s
         do {
             let started = Date()
