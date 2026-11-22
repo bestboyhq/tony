@@ -102,32 +102,38 @@ private struct Pill: View {
     }
 }
 
-/// What Tony hears while the user speaks: Parakeet's latest draft, a sentence on its last three lines.
-/// Each word is a view of its own, so when a draft changes, one spring moves the card and every word to its new place
-/// on its line. A new word fades in and unblurs like the text Malini streams, a beat after the one before it; a word the
+/// What Tony hears while the user speaks: Parakeet's latest draft, a sentence on its last five lines.
+/// Each word is a view of its own, so when a draft changes, one spring moves the card, the lines, and every word to its
+/// new place on its line. A new word fades in and unblurs like the text Malini streams, a beat after the one before it; a word the
 /// draft drops, or wraps onto another line, blurs out where it was; the word being said stays dim until the next draft
 /// keeps it.
 struct Caption: View {
     let text: String
     let listening: Bool
     @State private var words: [Word]
+    @State private var scroll: Scroll
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     static let width = 532.0, padding = 16.0
     private static let font = NSFont.systemFont(ofSize: 14), spacing = 3.0
     private static let space = (" " as NSString).size(withAttributes: [.font: font]).width
-    /// Three lines; one is as high as the pill with its padding.
+    /// The lines the caption shows; older ones scroll away above them.
+    static let rows = 5
+    /// With the caption's padding, one line is as high as the pill.
     private static let line = (font.ascender - font.descender + font.leading).rounded(.up)
-    private static let height = 3 * line + 2 * spacing
+    private static let pitch = line + spacing, measure = width - 2 * padding
     /// Long enough to run into the next draft, ~0.45 s later, so the card flows instead of stepping.
-    private static let motion = Animation.smooth(duration: 0.5)
+    private static let spring = Spring(duration: 0.5), motion = Animation.spring(spring)
     /// A new word waits this long, until the card has made room for most of it, so the card's edge never cuts it.
     static let lead = 0.1
 
     init(text: String, listening: Bool) {
         self.text = text
         self.listening = listening
-        _words = State(initialValue: Self.words(text, after: [], at: Date.now.timeIntervalSinceReferenceDate, listening: listening))
+        let words = Self.words(text, after: [], at: Date.now.timeIntervalSinceReferenceDate, listening: listening)
+        let last = Self.last(words)
+        _words = State(initialValue: words)
+        _scroll = State(initialValue: Scroll(from: last, to: last, at: 0))
     }
 
     struct Word: Identifiable {
@@ -139,14 +145,24 @@ struct Caption: View {
         var id: Double { born }
     }
 
+    /// How far the lines have scrolled, in lines, as they spring from `from` to `to` since `at`.
+    struct Scroll {
+        var from: Double, to: Double, at: Double
+        func value(at now: Double) -> Double { from + (to - from) * Caption.spring.value(target: 1.0, time: max(0, now - at)) }
+    }
+
     var body: some View {
-        let lines = Self.lines(words, width: Self.width - 2 * Self.padding)
+        let lines = Self.lines(words, width: Self.measure)
         let fade = AnyTransition(Blur(radius: reduceMotion ? 0 : 5)).animation(.easeOut(duration: 0.2))
+        let visible = min(lines.count, Self.rows)
         TimelineView(.animation) { timeline in
             let now = timeline.date.timeIntervalSinceReferenceDate
-            VStack(alignment: .leading, spacing: Self.spacing) {
-                // The last three lines, and the one scrolling out above them.
-                ForEach(lines.indices.suffix(4), id: \.self) { i in
+            // Each line in a place of its own, and one offset, on the draft's spring but drawn each frame, moves them
+            // all, the last line at the card's foot. An animated layout or offset placed a word new to a moving line,
+            // or one spelled anew, where the line was going while the rest of it slid up.
+            ZStack(alignment: .topLeading) {
+                // The last five lines, and the one scrolling out above them.
+                ForEach(lines.indices.suffix(Self.rows + 1), id: \.self) { i in
                     HStack(spacing: Self.space) {
                         ForEach(lines[i]) { word in
                             Text(verbatim: word.text)
@@ -155,23 +171,28 @@ struct Caption: View {
                                 .transition(fade)
                         }
                     }
+                    .offset(y: Double(i) * Self.pitch)
                     // Out of sight before it reaches the card's edge.
-                    .animation(.easeOut(duration: 0.15)) { $0.opacity(i < lines.count - 3 ? 0 : 1) }
+                    .animation(.easeOut(duration: 0.15)) { $0.opacity(i < lines.count - Self.rows ? 0 : 1) }
                     .transition(fade)
                 }
             }
+            .animation(nil) { $0.offset(y: -scroll.value(at: now) * Self.pitch) }
         }
+        // The lines as one, where the growing card puts them: without it, a word spelled anew as the card grew sat
+        // where the card was going, a line below the rest of its line.
+        .geometryGroup()
         .font(Font(Self.font))
         .fixedSize()
-        .frame(maxHeight: Self.height, alignment: .bottom)
+        .frame(height: Double(visible) * Self.pitch - Self.spacing, alignment: .bottomLeading)
         .mask {
-            // A fade above the text until it outgrows three lines, then over the top one, sliding down as the lines
+            // A fade above the text until it outgrows five lines, then over the top one, sliding down as the lines
             // scroll up. Room beside them for a word's blur.
             VStack(spacing: 0) {
                 LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: Self.line)
                 Rectangle()
             }
-            .padding(.top, lines.count > 3 ? 0 : -Self.line)
+            .padding(.top, lines.count > Self.rows ? 0 : -Self.line)
             .padding([.horizontal, .bottom], -8)
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -185,9 +206,15 @@ struct Caption: View {
     }
 
     private func update() {
-        let words = Self.words(text, after: words, at: Date.now.timeIntervalSinceReferenceDate, listening: listening)
+        let now = Date.now.timeIntervalSinceReferenceDate
+        let words = Self.words(text, after: words, at: now, listening: listening)
+        let last = Self.last(words)
+        if last != scroll.to { scroll = Scroll(from: reduceMotion ? last : scroll.value(at: now), to: last, at: now) }
         withAnimation(reduceMotion ? nil : Self.motion) { self.words = words }
     }
+
+    /// The index of the last line, where the lines scroll to.
+    private static func last(_ words: [Word]) -> Double { Double(max(0, lines(words, width: measure).count - 1)) }
 
     /// The words of `text`, those already shown keeping their times. Parakeet hears each draft as a sentence, so it
     /// may write a word again in another case or with other punctuation: that word stays, with its new spelling. New
