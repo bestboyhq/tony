@@ -31,24 +31,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// dictation (model, voice activity detection, the user's words, cleanup) without the mic or the key, fed in
     /// 20 ms chunks like the mic does, one file after another on the warm model. Times key up: what is left once
     /// the audio is in. Only `-realtime YES`, which feeds as fast as the mic would, leaves the background its time.
-    /// Prints each preview the HUD would show, at its time in the audio, to standard error; `-hud YES` shows the HUD too.
+    /// Prints each preview the HUD would show, at its time in the audio, to standard error; `-hud YES` draws the HUD
+    /// too, under the desktop picture, for a window recording.
     private static func transcribe(_ paths: some Collection<String>) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
         await speech.learn(Prefs.words)
         let dictation = UserDefaults.standard.bool(forKey: "hud") ? Dictation(speech: speech, ducking: nil) : nil
-        let hud = dictation.map { HUD(dictation: $0, mic: $0.mic) }
-        // A plain dark backdrop under the HUD, so a recording of it shows the same each time and none of the user's screen.
-        let backdrop = hud.map { _ in
-            let screen = (NSScreen.main ?? NSScreen.screens[0]).frame
-            let window = NSWindow(contentRect: NSRect(x: screen.midX - 400, y: screen.minY, width: 800, height: 400), styleMask: .borderless, backing: .buffered, defer: false)
-            window.contentView = NSHostingView(rootView: LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)], startPoint: .top, endPoint: .bottom))
-            window.level = NSWindow.Level(NSWindow.Level.statusBar.rawValue - 1)  // above the Dock, under the HUD
-            window.ignoresMouseEvents = true
+        // The HUD's view on a plain dark backdrop, in a window under the desktop picture: a window recording of it
+        // shows the same each time, and the user's screen shows none of it.
+        let window = dictation.map { dictation in
+            let window = NSWindow(contentRect: NSRect(origin: .zero, size: HUD.size), styleMask: .borderless, backing: .buffered, defer: false)
+            window.contentView = NSHostingView(rootView: HUDView(dictation: dictation, mic: dictation.mic)
+                .background(LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)], startPoint: .top, endPoint: .bottom)))
+            window.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)) - 1)
             window.orderFrontRegardless()
             return window
         }
-        defer { withExtendedLifetime((hud, backdrop)) {} }
+        defer { withExtendedLifetime(window) {} }
         for path in paths {
             guard let session = speech.session(languages: Prefs.languages) else {
                 print("speech not ready: \(speech.state)")

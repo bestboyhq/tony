@@ -103,73 +103,96 @@ private struct Pill: View {
 }
 
 /// What Tony hears while the user speaks: Parakeet's latest draft, a sentence on its last three lines.
-/// Each new word fades in and unblurs like the text Malini streams, a beat after the one before it, and the word
-/// being said stays dim until the next draft keeps it.
+/// Each word is a view of its own, so when a draft changes, one spring moves the card and every word to its new place
+/// on its line. A new word fades in and unblurs like the text Malini streams, a beat after the one before it; a word the
+/// draft drops, or wraps onto another line, blurs out where it was; the word being said stays dim until the next draft
+/// keeps it.
 struct Caption: View {
     let text: String
     let listening: Bool
-    @State private var words: [Word] = []
-    @State private var overflows = false
+    @State private var words: [Word]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     static let width = 532.0, padding = 16.0
     private static let font = NSFont.systemFont(ofSize: 14), spacing = 3.0
+    private static let space = (" " as NSString).size(withAttributes: [.font: font]).width
     /// Three lines; one is as high as the pill with its padding.
     private static let line = (font.ascender - font.descender + font.leading).rounded(.up)
     private static let height = 3 * line + 2 * spacing
+    /// Long enough to run into the next draft, ~0.45 s later, so the card flows instead of stepping.
+    private static let motion = Animation.smooth(duration: 0.5)
+    /// A new word waits this long, until the card has made room for most of it, so the card's edge never cuts it.
+    static let lead = 0.1
 
-    struct Word: TextAttribute {
+    init(text: String, listening: Bool) {
+        self.text = text
+        self.listening = listening
+        _words = State(initialValue: Self.words(text, after: [], at: Date.now.timeIntervalSinceReferenceDate, listening: listening))
+    }
+
+    struct Word: Identifiable {
         var text: String
         /// When it starts to fade in, and when it stopped being the word being said, on the reference date's clock.
         var born: Double
         var settled: Double?
+        /// Each new word is born after every word before it, so its birth names it.
+        var id: Double { born }
     }
 
     var body: some View {
-        let text = Self.text(words)
+        let lines = Self.lines(words, width: Self.width - 2 * Self.padding)
+        let fade = AnyTransition(Blur(radius: reduceMotion ? 0 : 5)).animation(.easeOut(duration: 0.2))
         TimelineView(.animation) { timeline in
-            text.textRenderer(Reveal(now: timeline.date.timeIntervalSinceReferenceDate, reduceMotion: reduceMotion))
+            let now = timeline.date.timeIntervalSinceReferenceDate
+            VStack(alignment: .leading, spacing: Self.spacing) {
+                // The last three lines, and the one scrolling out above them.
+                ForEach(lines.indices.suffix(4), id: \.self) { i in
+                    HStack(spacing: Self.space) {
+                        ForEach(lines[i]) { word in
+                            Text(verbatim: word.text)
+                                .fixedSize()
+                                .modifier(Reveal(word: word, now: now, reduceMotion: reduceMotion))
+                                .transition(fade)
+                        }
+                    }
+                    // Out of sight before it reaches the card's edge.
+                    .animation(.easeOut(duration: 0.15)) { $0.opacity(i < lines.count - 3 ? 0 : 1) }
+                    .transition(fade)
+                }
+            }
         }
         .font(Font(Self.font))
-        .lineSpacing(Self.spacing)
-        .contentTransition(.identity)
-        .fixedSize(horizontal: false, vertical: true)
-        .onGeometryChange(for: Bool.self) { [limit = Self.height + 1] in $0.size.height > limit } action: { overflows = $0 }
-        // The last three lines, the one above them fading out; room beside them for a word's blur.
+        .fixedSize()
         .frame(maxHeight: Self.height, alignment: .bottom)
         .mask {
+            // A fade above the text until it outgrows three lines, then over the top one, sliding down as the lines
+            // scroll up. Room beside them for a word's blur.
             VStack(spacing: 0) {
-                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: overflows ? Self.line : 0)
+                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: Self.line)
                 Rectangle()
             }
+            .padding(.top, lines.count > 3 ? 0 : -Self.line)
             .padding([.horizontal, .bottom], -8)
-            .padding(.top, overflows ? 0 : -8)
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, Self.padding)
         .padding(.vertical, (Shadow.height - Self.line) / 2)
         .modifier(Glass(shape: RoundedRectangle(cornerRadius: Shadow.height / 2), radius: Shadow.height / 2, increasedContrast: contrast == .increased))
-        .animation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0), value: words.count)
-        .onChange(of: self.text, initial: true) { update() }
+        .onChange(of: text) { update() }
         .onChange(of: listening) { update() }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(self.text)
+        .accessibilityLabel(text)
     }
 
     private func update() {
-        words = Self.words(text, after: words, at: Date.now.timeIntervalSinceReferenceDate, listening: listening)
-    }
-
-    private static func text(_ words: [Word]) -> Text {
-        words.enumerated().reduce(Text(verbatim: "")) { text, item in
-            Text("\(text)\(Text(verbatim: item.offset == 0 ? item.element.text : " " + item.element.text).customAttribute(item.element))")
-        }
+        let words = Self.words(text, after: words, at: Date.now.timeIntervalSinceReferenceDate, listening: listening)
+        withAnimation(reduceMotion ? nil : Self.motion) { self.words = words }
     }
 
     /// The words of `text`, those already shown keeping their times. Parakeet hears each draft as a sentence, so it
     /// may write a word again in another case or with other punctuation: that word stays, with its new spelling. New
-    /// words come one after another, a burst within 0.4 s. While the user speaks, the last word is the one being said:
-    /// dim, and without the period Parakeet ends each draft with.
+    /// words come one after another, a burst within 0.4 s, once the card has room. While the user speaks, the last
+    /// word is the one being said: dim, and without the period Parakeet ends each draft with.
     static func words(_ text: String, after old: [Word], at now: Double, listening: Bool) -> [Word] {
         var new = text.split(separator: " ").map(String.init)
         if listening, var last = new.popLast() {
@@ -186,7 +209,7 @@ struct Caption: View {
         }
         var kept = old.indices.filter { !removed.contains($0) }.makeIterator()
         let step = min(0.06, 0.4 / Double(max(1, inserted.count)))
-        var next = max(now, (old.map(\.born).max() ?? now) + step)
+        var next = max(now + lead, (old.map(\.born).max() ?? now) + step)
         return new.indices.map { i in
             var word: Word
             if inserted.contains(i) {
@@ -200,34 +223,51 @@ struct Caption: View {
             return word
         }
     }
+
+    /// The words in lines as they wrap in `width`.
+    static func lines(_ words: [Word], width: Double) -> [[Word]] {
+        var lines: [[Word]] = [], x = width
+        for word in words {
+            // Rounded up, as a view sizes its text, so a line never outgrows the card.
+            let size = (word.text as NSString).size(withAttributes: [.font: font]).width.rounded(.up)
+            if x + space + size > width {
+                lines.append([word])
+                x = size
+            } else {
+                lines[lines.count - 1].append(word)
+                x += space + size
+            }
+        }
+        return lines
+    }
 }
 
-/// Draws a caption's words as they arrive: each from clear, blurred and a little low to sharp in place over half a
-/// second on Malini's curve, the word being said at half strength. With Reduce Motion they only fade.
-private struct Reveal: TextRenderer {
-    var now: Double
-    var reduceMotion: Bool
-    var displayPadding: EdgeInsets { EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8) }
+/// A caption's word as it arrives: from clear, blurred and a little low to sharp in place over half a second on
+/// Malini's curve, at half strength while it is the word being said. With Reduce Motion it only fades.
+private struct Reveal: ViewModifier {
+    let word: Caption.Word
+    let now: Double
+    let reduceMotion: Bool
 
-    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
-        for run in layout.flatMap({ $0 }) {
-            guard let word = run[Caption.Word.self] else {
-                context.draw(run)
-                continue
-            }
-            let shown = Self.ease((now - word.born) / 0.5)
-            var context = context
-            context.opacity = shown * (0.5 + 0.5 * (word.settled.map { Self.ease((now - $0) / 0.3) } ?? 0))
-            if !reduceMotion, shown < 1 {
-                context.translateBy(x: 0, y: 4 * (1 - shown))
-                context.addFilter(.blur(radius: 5 * (1 - shown)))
-            }
-            context.draw(run)
-        }
+    func body(content: Content) -> some View {
+        let shown = Self.ease((now - word.born) / 0.5)
+        content
+            .opacity(shown * (0.5 + 0.5 * (word.settled.map { Self.ease((now - $0) / 0.3) } ?? 0)))
+            .blur(radius: reduceMotion ? 0 : 5 * (1 - shown))
+            .offset(y: reduceMotion ? 0 : 4 * (1 - shown))
     }
 
     /// Expo out, Malini's curve for streamed text (cubic-bezier(0.16, 1, 0.3, 1)), over 0...1.
     private static func ease(_ t: Double) -> Double { t <= 0 ? 0 : t >= 1 ? 1 : 1 - pow(2, -10 * t) }
+}
+
+/// A dropped word, out of focus as it fades.
+private struct Blur: Transition {
+    let radius: Double
+
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content.opacity(phase.isIdentity ? 1 : 0).blur(radius: phase.isIdentity ? 0 : radius)
+    }
 }
 
 /// Grip's dot, Tony's mic head: blue through red to orange, like the icon.

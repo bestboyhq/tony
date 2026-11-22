@@ -362,7 +362,7 @@ import os
     /// Over the dark gray of a dark window, the shadow below the pill blends between gray levels instead of stepping
     /// through them in rings, and the glass above it stays clear.
     @Test func ditheredOverDarkGray() throws {
-        let image = Shadow.image(scale: 2, dark: true)
+        let image = Shadow.image(radius: Shadow.height / 2, scale: 2, dark: true)
         let data = try #require(image.dataProvider?.data as Data?)
         let gray = { (x: Int, y: Int) in (43 * (1 - Double(data[y * image.bytesPerRow + x * 4 + 3]) / 255)).rounded() }
         let middle = image.width / 2, strip = middle - 32..<middle + 32  // the straight part, 32 pt wide at 2x
@@ -372,6 +372,34 @@ import os
         let between = rows.filter { abs($0 - $0.rounded()) > 0.1 }
         #expect(rows.count > 30)
         #expect(between.count * 4 > rows.count * 3, "\(rows.count - between.count) of \(rows.count) rows sit on one gray level")
+    }
+}
+
+/// The caption (ADR 0019): a word already shown keeps its time, new ones come one after another once the card has
+/// room, the word being said stays dim and without Parakeet's period, and a draft that swaps a word brings a new one.
+@Suite struct CaptionTests {
+    @Test func wordsKeepTheirTimes() {
+        let first = Caption.words("Is it actually.", after: [], at: 0, listening: true)
+        #expect(first.map(\.text) == ["Is", "it", "actually"])
+        #expect(first[0].born == Caption.lead && first[0].born < first[1].born && first[1].born < first[2].born)
+        #expect(first.map { $0.settled != nil } == [true, true, false])
+        let second = Caption.words("Is it actually possible?", after: first, at: 1, listening: true)
+        #expect(second.prefix(3).map(\.born) == first.map(\.born))
+        #expect(second[2].settled == 1 && second[3].settled == nil)
+        #expect(second[3].text == "possible" && second[3].born == 1 + Caption.lead)
+        let swapped = Caption.words("Is it actually impossible", after: second, at: 2, listening: true)
+        #expect(swapped.count == 4 && swapped[3].born > second[3].born)
+        let done = Caption.words("is it actually impossible?", after: swapped, at: 3, listening: false)
+        #expect(done.map(\.born) == swapped.map(\.born) && done.map(\.text) == ["is", "it", "actually", "impossible?"])
+        #expect(done.allSatisfy { $0.settled != nil })
+    }
+
+    @Test func linesWrapInOrder() {
+        let words = Caption.words(String(repeating: "transcription ", count: 40), after: [], at: 0, listening: false)
+        let lines = Caption.lines(words, width: 500)
+        #expect(lines.flatMap { $0 }.map(\.id) == words.map(\.id))
+        #expect(lines.count > 1 && Set(lines.dropLast().map(\.count)).count == 1)
+        #expect(Caption.lines([], width: 500).isEmpty)
     }
 }
 

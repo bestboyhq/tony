@@ -52,7 +52,8 @@ Your voice never leaves the Mac.
 <sub>Parakeet Ultra on the Neural Engine of a MacBook Pro with M5 Pro, median of 5 runs.
   The clips were read by a macOS voice, and every one came out word for word.</sub>
 
-- **Your first word counts.** The audio engine stays prepared between dictations, so capture starts on key down, not a beat later.
+- **Your first word counts.** Tony opens the mic the moment your key goes down, so it hears your first word.
+- **Your words as you say them.** A caption above the pill shows what Tony hears, about half a second after you say it, and the text that lands when you let go is the same.
 - **Warm from the first press.** The model loads at launch and pays its Neural Engine setup up front, so the first dictation of the day is as quick as the hundredth.
 - **Talk for five minutes, wait for none.** Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a long ramble as after one sentence.
 - **Back to back.** Press the key again while your last dictation is still landing: it lands first, and the new one follows it.
@@ -91,6 +92,8 @@ The pill is most of what you will ever see of Tony, so it gets the attention.
 - **It hears you.** Nine bars follow your voice every frame, at 120 Hz on ProMotion.
   The dot, Tony's blue-to-orange mark, swells as you speak, and its colors churn and rise with your voice.
   Hover the pill and the dot comes alight too.
+- **Words that arrive like magic.** While you talk, each word fades in above the pill as Tony hears it, and a word it hears better on a second listen blurs into the new one in place.
+  The caption keeps your last three lines and scrolls the rest away.
 - **Busy only when it is.** Transcribing usually takes a blink, so a soft wave runs across the bars only when it takes long enough to notice.
 - **A lock for hands-free,** so you know letting go won't stop it.
 - **Never in the way.** It never takes focus or a click from the app beneath it, so your text always lands where you were typing.

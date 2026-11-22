@@ -23,6 +23,9 @@ Speech to text on the Neural Engine.
   Ten seconds also keeps a segment within the model's one 15 s window, which costs about the same at any length up to it.
   At each breath, the rest of the segment is drafted, and when the user lets go without saying more, the draft is the text: key up took 2 ms (median) against 58 ms for five-second segments.
   The draft covers the same windows key up would, so it changes no word.
+  Every 0.45 s of speech (`Session.draftEvery`), the rest is drafted too, one draft at a time, for the HUD's caption (ADR 0019): `Session.preview` is the closed segments and the latest draft.
+  Reuse a draft at key up only when its speech is the speech key up would transcribe, so the caption never changes the text.
+  A draft past the model's one window costs a pass per window, so the caption waits for the cut there.
   Cut inside the pause, never in speech: Grip learned that Parakeet drops words cut at a chunk edge and degrades past a few minutes of audio (`native/src/transcript.rs` in Grip).
   People pause to think mid-sentence, and a segment heard alone ends in a period and the next starts with a capital: "like fire. And forget", "So For example".
   So Parakeet hears two seconds on each side of a cut, and each side writes only the words that start on its side (`Segments.words`).

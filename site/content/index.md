@@ -57,6 +57,7 @@ fn down → event tap → other audio fades, media pauses
 
 - **The pill.** While you talk, a small pill floats at the bottom of your screen, over full-screen apps and on every Space.
   Nine bars follow your voice, and the dot, Tony's blue-to-orange mark, swells as you speak.
+  Above it, a caption shows your words as Tony hears them, each one fading in.
   It never takes focus or a click from the app beneath it.
 - **Your music waits while you talk.** Other audio fades out the moment you press the key and back in after you let go.
   On macOS 15.4 and later, the song or video playing pauses once it's quiet and plays on from the same spot, and music you had off stays off.

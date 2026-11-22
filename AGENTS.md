@@ -81,6 +81,7 @@ The site's footer names the brand, like every Bestboy site's: `© 2026 Bestboy a
   `--dmg` and `--update` add the notarized DMG, the update zip, and `appcast.xml`; CI releases with both.
 - `node scripts/update-e2e.ts` proves a signed build updates itself (clicks the menu, so the terminal needs Accessibility).
 - `open --env TONY_EVENTS_URL=http://127.0.0.1:8787/api/events release/Tony.app` points a development build's usage stats at a local stand-in for bestboy.dev's relay; without it, a development build sends none.
+- `release/Tony.app/Contents/MacOS/Tony --transcribe <files> -realtime YES` feeds audio files as fast as the mic would and prints each draft, the text, and the key up time; `-hud YES` also draws the HUD on its drafts in a window under the desktop picture, for a window recording that shows nothing on the screen.
 - `node scripts/icon.ts` redraws the artwork in `build/Tony.icon` from the numbers at its top.
 - `node --test 'scripts/*.test.ts'` tests the release tooling, that `build/Tony.icon` matches `scripts/icon.ts`, that `docs/adr/README.md` lists every ADR, and that About, `NOTICE`, and the copyright line agree (Node 24).
 - In `site/` (Node 24, pnpm through Corepack): `pnpm install`, then `pnpm dev` serves the site with hot reload, `pnpm check` type-checks it, and `pnpm test` builds it into `site/build/` and runs its tests.

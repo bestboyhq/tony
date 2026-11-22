@@ -18,7 +18,8 @@ A sentence takes about 50 ms, and its English word error rate is 5.8%.
 Parakeet Ultra on the Neural Engine of a MacBook Pro with M5 Pro, median of 5 runs.
 The clips were read by a macOS voice, and every one came out word for word.
 
-- **Your first word counts.** The audio engine stays prepared between dictations, so capture starts on key down, not a beat later.
+- **Your first word counts.** Tony opens the mic the moment your key goes down, so it hears your first word.
+- **Your words as you say them.** A caption above the pill shows what Tony hears, about half a second after you say it, and the text that lands when you let go is the same.
 - **Warm from the first press.** The model loads at launch and pays its Neural Engine setup up front, so the first dictation of the day is as quick as the hundredth.
 - **Talk for five minutes, wait for none.** Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a long ramble as after one sentence.
 - **Back to back.** Press the key again while your last dictation is still landing: it lands first, and the new one follows it.
