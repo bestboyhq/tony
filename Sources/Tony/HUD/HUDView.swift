@@ -3,31 +3,71 @@ import SwiftUI
 /// The pill: listening with the live mic level, transcribing when that takes long enough to notice,
 /// and notices; above it, while the user speaks, the caption of what Tony hears. Springs for motion; Reduce Motion
 /// swaps movement for fades.
+///
+/// On macOS 26 the two are one liquid: the caption buds out of the pill, lets go of it, and floats above; at key up
+/// it shrinks to a drop that flows back into the pill.
 struct HUDView: View {
     let dictation: Dictation
     let mic: Mic
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The caption's words: the draft while the user speaks, none as it drops back into the pill.
+    @State private var said = ""
+    @State private var captioned = false
+    /// The caption has let go of the pill.
+    @State private var floating = false
+    /// How long the caption takes to drop back into the pill.
+    private static let drop = 0.4
+    /// From the end of a dictation until the HUD is gone: the drop, then the caption and the pill fade out.
+    static let exit = Duration.seconds(drop + 0.3)
 
     var body: some View {
-        VStack(spacing: 10) {
-            if captioned {
-                Caption(text: dictation.preview, listening: dictation.phase == .listening)
-                    .frame(width: Caption.width)
-                    .transition(reduceMotion ? .opacity : .offset(y: 6).combined(with: .scale(scale: 0.98, anchor: .bottom)).combined(with: .opacity))
-            }
-            if dictation.phase != .idle {
-                Pill(dictation: dictation, mic: mic)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
+        Liquid {
+            // Liquid Glass merges shapes closer than its spacing, 14 pt, with a neck that pinches off as they part. It
+            // also replaces their transitions with its own: in from a blur at full size, and out the same way.
+            VStack(spacing: floating ? 20 : 2) {
+                if captioned {
+                    Caption(text: said, listening: dictation.phase == .listening)
+                        .frame(width: Caption.width)
+                        .transition(reduceMotion ? .opacity : .offset(y: 6).combined(with: .scale(scale: 0.98, anchor: .bottom)).combined(with: .opacity))
+                }
+                // It waits for the caption to drop back in.
+                if dictation.phase != .idle || captioned {
+                    Pill(dictation: dictation, mic: mic)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 26)  // the pill 18 pt above the Dock, and room for its shadow
         .animation(animation, value: dictation.phase)
-        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.4, bounce: 0.15), value: captioned)
+        .onChange(of: dictation.preview) { if wantsCaption { said = dictation.preview } }
+        .task(id: wantsCaption) {
+            let fade = reduceMotion ? Animation.easeOut(duration: 0.15) : .spring(duration: 0.4, bounce: 0.15)
+            if wantsCaption {
+                said = dictation.preview
+                if !captioned { floating = !liquid }
+                withAnimation(liquid ? .spring(duration: 0.4, bounce: 0.2) : fade) { captioned = true }
+                guard liquid, (try? await Task.sleep(for: .milliseconds(450))) != nil else { return }
+                withAnimation(.spring(duration: 0.7, bounce: 0.35)) { floating = true }
+            } else if captioned {
+                if liquid {
+                    // Removed glass dissolves instead of flowing anywhere: so the card shrinks into the pill first.
+                    withAnimation(.spring(duration: 0.45, bounce: 0.15)) {
+                        said = ""
+                        floating = false
+                    }
+                    guard (try? await Task.sleep(for: .seconds(Self.drop))) != nil else { return }
+                }
+                withAnimation(liquid ? .smooth(duration: 0.2) : fade) { captioned = false }
+            }
+        }
     }
 
-    private var captioned: Bool {
-        (dictation.phase == .listening || dictation.phase == .transcribing) && !dictation.preview.isEmpty
+    private var wantsCaption: Bool { dictation.phase == .listening && !dictation.preview.isEmpty }
+
+    /// The caption and the pill flow into each other: Liquid Glass, with motion.
+    private var liquid: Bool {
+        if #available(macOS 26, *) { !reduceMotion } else { false }
     }
 
     /// In like a bubble, quick with a little overshoot; out without one.
@@ -184,7 +224,7 @@ struct Caption: View {
         .geometryGroup()
         .font(Font(Self.font))
         .fixedSize()
-        .frame(height: Double(visible) * Self.pitch - Self.spacing, alignment: .bottomLeading)
+        .frame(height: max(0, Double(visible) * Self.pitch - Self.spacing), alignment: .bottomLeading)
         .mask {
             // A fade above the text until it outgrows five lines, then over the top one, sliding down as the lines
             // scroll up. Room beside them for a word's blur.
@@ -450,28 +490,35 @@ private struct Meter: View {
     }
 }
 
-/// Liquid Glass where the system has it, vibrancy before that; solid with Reduce Transparency, outlined
-/// with Increase Contrast. A soft shadow lifts it off whatever is under it. Clipped to its shape, whose corners are
-/// `radius`: Liquid Glass draws its own shadow just past its edge, which reads as a dark outline.
+/// Liquid Glass where the system has it, which also casts its shadow and flows into the HUD's other glass nearby
+/// (`Liquid`). Before that, vibrancy, clipped to its shape, whose corners are `radius`, and lifted by a soft shadow.
+/// Solid with Reduce Transparency, outlined with Increase Contrast.
 private struct Glass<S: InsettableShape>: ViewModifier {
     let shape: S
     let radius: Double
     let increasedContrast: Bool
 
     func body(content: Content) -> some View {
-        Group {
-            if #available(macOS 26, *) {
-                content
-                    .glassEffect(.regular, in: shape)
-                    .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0), lineWidth: 1))
-            } else {
-                content
-                    .background(.regularMaterial, in: shape)
-                    .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0.08), lineWidth: increasedContrast ? 1 : 0.5))
-            }
+        if #available(macOS 26, *) {
+            content
+                .glassEffect(.regular, in: shape)
+                .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0), lineWidth: 1))
+        } else {
+            content
+                .background(.regularMaterial, in: shape)
+                .overlay(shape.strokeBorder(.primary.opacity(increasedContrast ? 0.5 : 0.08), lineWidth: increasedContrast ? 1 : 0.5))
+                .clipShape(shape)
+                .background(Shadow(radius: radius))
         }
-        .clipShape(shape)
-        .background(Shadow(radius: radius))
+    }
+}
+
+/// One Liquid Glass for the HUD's shapes, so the caption and the pill merge where they meet (macOS 26).
+private struct Liquid<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(macOS 26, *) { GlassEffectContainer(spacing: 14) { content } } else { content }
     }
 }
 

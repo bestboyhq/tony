@@ -289,11 +289,11 @@ final class Dictation {
         }
     }
 
-    /// The HUD as it is while the user has said `preview`, or gone: for `Tony --transcribe -hud YES`, which has no
-    /// mic, key, or paste, and no ducking.
-    func show(_ preview: String?) {
-        self.preview = preview ?? ""
-        phase = preview == nil ? .idle : .listening
+    /// The HUD as it is while the user has said `preview`, transcribing after key up, or gone: for
+    /// `Tony --transcribe -hud YES`, which has no mic, key, or paste, and no ducking.
+    func show(_ preview: String, _ phase: Phase = .listening) {
+        self.preview = preview
+        self.phase = phase
     }
 
     /// Pastes the last dictation again, from the menu.

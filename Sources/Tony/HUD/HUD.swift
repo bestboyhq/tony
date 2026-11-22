@@ -36,9 +36,9 @@ final class HUD {
     private func update(_ phase: Dictation.Phase) {
         hide?.cancel()
         if phase == .idle {
-            // Leave the panel up until the pill's exit animation is over.
+            // Leave the panel up until the caption has dropped back into the pill and both are gone.
             hide = Task {
-                try? await Task.sleep(for: .milliseconds(400))
+                try? await Task.sleep(for: HUDView.exit)
                 guard !Task.isCancelled else { return }
                 panel.alphaValue = 0
             }

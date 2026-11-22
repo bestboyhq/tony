@@ -48,7 +48,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.orderFrontRegardless()
             return window
         }
-        defer { withExtendedLifetime(window) {} }
+        // Under the desktop picture the window is hidden, so App Nap would stop drawing it a few seconds in.
+        let activity = window.map { _ in ProcessInfo.processInfo.beginActivity(options: .userInitiated, reason: "Drawing the HUD for a recording") }
+        defer { withExtendedLifetime((window, activity)) {} }
         for path in paths {
             guard let session = speech.session(languages: Prefs.languages) else {
                 print("speech not ready: \(speech.state)")
@@ -74,12 +76,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }
             let keyUp = Date()
+            dictation?.show(shown, .transcribing)
             let text = Cleanup.removeFillers(await session.finish())
             print(text)
             let timing = String(format: "%.1f s of audio, key up to text %.0f ms\n", Double(samples.count) / 16000, Date().timeIntervalSince(keyUp) * 1000)
             FileHandle.standardError.write(Data(timing.utf8))
             if let dictation {
-                dictation.show(nil)
+                dictation.show("", .idle)
                 try? await Task.sleep(for: .seconds(1))
             }
         }
