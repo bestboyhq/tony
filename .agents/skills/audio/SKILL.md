@@ -8,7 +8,7 @@ description: Microphone capture for dictation. Use when changing the input devic
 Microphone capture, from key down to the samples the model hears.
 
 - The mic opens on key down and closes on key up.
-- Capture starts first on key down, from an engine kept prepared, so it covers the first word.
+- Capture starts first on key down, so it covers the first word.
   Measure key down to first sample on built-in, USB, and Bluetooth mics.
 - Prefer the built-in mic over a Bluetooth headset by default.
   Opening an AirPods mic switches them to the call profile, drops all other audio to phone quality, and takes long enough to lose the first words.
@@ -20,12 +20,13 @@ Microphone capture, from key down to the samples the model hears.
   MediaRemote obeys only Apple's processes since macOS 15.4, so `osascript` sends the commands; the command is sent without waiting, so the script waits for it to land.
 - Leave the system input volume where the user set it.
 - Convert once to what the model wants, 16 kHz mono Float32, with `AVAudioConverter`, whatever the device delivers (44.1 or 48 kHz, stereo, 24-bit).
-- Keep one `AVAudioEngine` for the app's life and rewire it on each device change, connecting with the input's hardware format (`inputFormat(forBus: 0)`) through `tonyConnect`.
-  Freeing an engine while a device change settles crashes inside AVFAudio, the input's output format lags a device switch, and `connect` raises an Objective-C exception, which Swift can't catch, when the hardware's rate changes under it.
-- Follow the default input device as it changes.
-  A device unplugged mid-dictation ends the dictation cleanly and keeps what was heard.
-  A configuration change stops the engine, even the one a device selection posts a moment later: a dictation restarts it while its device and format hold.
+- Capture through an IOProc on the one device Tony records, created on key down and destroyed on key up, so idle Tony holds no audio device (ADR 0018).
+  Never `AVAudioEngine`: its IO unit keeps a private aggregate of the default input and output, and builds it again on each default change, so a headset that connects lands in it while Tony idles and plays in call quality.
+  Its warm start bought nothing: the first sample comes about 60 ms after start either way.
+- Read only 32-bit float input, the virtual format IOProcs get, at the rate it says (`Devices.inputRate`).
+- Pick the device at each key down, so Tony follows the default input and plugged devices with no listener.
+  A running dictation keeps its device: one unplugged mid-dictation ends the dictation cleanly and keeps what was heard, and a new rate gets a new converter.
 - Detect a built-in mic muted by a closed lid, a missing device, and a mic that delivers only silence, and say so once in the HUD.
 - The audio thread is real-time safe: it hands the level to the HUD and the samples to speech through lock-free buffers.
 
-Done when the first syllable after key down is transcribed on built-in, USB, and AirPods mics, other apps' audio fades out while Tony listens and comes back at the user's volume, and a song in Spotify or Music and a video in Safari or Chrome pause and play on from the same spot, at full quality unless the user picked a Bluetooth mic.
+Done when the first syllable after key down is transcribed on built-in, USB, and AirPods mics, other apps' audio fades out while Tony listens and comes back at the user's volume, and a song in Spotify or Music and a video in Safari or Chrome pause and play on from the same spot, at full quality unless the user picked a Bluetooth mic, and a Bluetooth headset that connects while Tony idles keeps playing at full quality.

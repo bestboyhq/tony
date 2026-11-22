@@ -60,6 +60,19 @@ nonisolated enum Devices {
         return AudioObjectSetPropertyData(id, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &volume) == noErr
     }
 
+    /// The rate an IOProc gets the device's input at, when it gets it as 32-bit floats, the only samples Tony reads.
+    static func inputRate(_ id: AudioDeviceID) -> Double? {
+        let streams: [AudioStreamID] = array(id, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput)
+        let formats = streams.compactMap { value($0, kAudioStreamPropertyVirtualFormat) as AudioStreamBasicDescription? }
+        guard let rate = formats.first?.mSampleRate, rate > 0, formats.count == streams.count,
+              formats.allSatisfy({ $0.mFormatID == kAudioFormatLinearPCM && $0.mFormatFlags & kAudioFormatFlagIsFloat != 0 && $0.mBitsPerChannel == 32 && $0.mSampleRate == rate })
+        else { return nil }
+        return rate
+    }
+
+    /// The device runs IO for this process; false once it went away.
+    static func isRunning(_ id: AudioDeviceID) -> Bool { value(id, kAudioDevicePropertyDeviceIsRunning) == UInt32(1) }
+
     /// A MacBook's built-in mic is off while the lid is closed.
     static var lidClosed: Bool {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
@@ -105,8 +118,8 @@ nonisolated enum Devices {
         return string?.takeRetainedValue() as String?
     }
 
-    private static func array<T: BitwiseCopyable>(_ id: AudioObjectID, _ selector: AudioObjectPropertySelector) -> [T] {
-        var address = address(selector)
+    private static func array<T: BitwiseCopyable>(_ id: AudioObjectID, _ selector: AudioObjectPropertySelector, scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) -> [T] {
+        var address = address(selector, scope: scope)
         var size: UInt32 = 0
         guard AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr else { return [] }
         return Array(unsafeUninitializedCapacity: Int(size) / MemoryLayout<T>.stride) { buffer, count in

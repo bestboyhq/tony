@@ -23,7 +23,7 @@ Every domain obeys these invariants:
 - **Instant.** Listening starts on key down, so the first word is captured, and the text lands about 100 ms after key up.
 - **Every word survives.** Every dictation stays on the clipboard, so text that cannot be inserted (a secure field, an app that ignores paste) is one ⌘V away, and the menu keeps the last one.
 - **Focus stays with the user.** The HUD and every other surface are non-activating, so the text lands in the field the user is in.
-- **Idle is free.** Between dictations the mic is closed (no orange dot), the CPU is idle, and the model waits warm.
+- **Idle is free.** Between dictations Tony holds no audio device, so the mic is closed (no orange dot) and a Bluetooth headset keeps full quality, the CPU is idle, and the model waits warm.
 - **Private.** Audio and text stay on the Mac, and audio stays in memory.
   No account; the network is only for the one-time model downloads, update checks, and usage stats (ADR 0017).
   Usage stats go through bestboy.dev, are on until the user turns it off in Settings (Share usage stats) or sets `DO_NOT_TRACK`, and never hold what was said or typed, which app, the user's words, or a name or path.

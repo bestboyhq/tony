@@ -38,7 +38,7 @@ See [Settings](/tony/docs/settings.md) to change the key.
 
 ```
 fn down → event tap → other audio fades, media pauses
-        → AVAudioEngine, 16 kHz → Silero VAD
+        → Core Audio, 16 kHz → Silero VAD
         → Parakeet Ultra and Parakeet CTC 110M on the Neural Engine
         → fillers out, fit to the cursor → clipboard → ⌘V
 ```

@@ -328,7 +328,7 @@ import os
 /// Opens each wired mic for a second and a half; skipped where Tony may not use the mic.
 @Suite struct MicTests {
     @Test(.enabled(if: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized))
-    func oneEngineHearsEveryMic() async throws {
+    func hearsEveryMic() async throws {
         let mic = Mic()
         for device in Devices.inputs() where device.isBuiltIn || device.transport == kAudioDeviceTransportTypeUSB {
             let count = Atomic<Int>(0)
@@ -340,11 +340,12 @@ import os
             let open = (ContinuousClock.now - started) / .seconds(1)
             let summary = await mic.stop().value
             #expect(summary.device?.uid == device.uid)
-            // 16 kHz while open, less up to a second the device takes to start (half a second for a Studio Display)
-            // and to restart after the configuration change its selection posts.
+            // 16 kHz while open, less up to a second the device takes to start (half a second for a Studio Display).
             let expected = Int(16_000 * open)
             #expect((expected - 16_000...expected + 1_000).contains(count.load(ordering: .relaxed)), "\(device.name), open \(open) s")
         }
+        // AVAudioEngine's aggregate of the default input and output pulls a headset that connects into call quality (ADR 0018).
+        #expect(!Devices.inputs().contains { $0.uid.hasPrefix("CADefaultDeviceAggregate") })
     }
 }
 

@@ -195,7 +195,7 @@ Tony needs macOS 15 or later on Apple silicon.
 ## Under the hood
 
 ```
-fn down → event tap → other audio fades, media pauses → AVAudioEngine, 16 kHz → Silero VAD
+fn down → event tap → other audio fades, media pauses → Core Audio, 16 kHz → Silero VAD
         → Parakeet Ultra and Parakeet CTC 110M on the Neural Engine
         → fillers out, fit to the cursor → clipboard → ⌘V
 ```

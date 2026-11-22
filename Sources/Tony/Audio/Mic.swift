@@ -1,13 +1,15 @@
-import AVFoundation
+import AVFAudio
 import CoreAudio
 import OSLog
 import Synchronization
-import TonyObjC
 
 /// Microphone capture for one dictation at a time. The mic opens on `start` and closes on `stop`, so the
-/// orange dot shows only while Tony listens. The engine is wired and prepared between dictations, so
-/// `start` only has to open the device. Samples reach `onSamples` as 16 kHz mono Float32, what the model
-/// wants, whatever the device delivers.
+/// orange dot shows only while Tony listens, and between dictations Tony holds no audio device at all.
+/// Samples reach `onSamples` as 16 kHz mono Float32, what the model wants, whatever the device delivers.
+///
+/// An IOProc on the one device Tony records, never `AVAudioEngine`: the engine's IO unit keeps a private
+/// aggregate of the default input and output and builds it again on each default change, so a Bluetooth
+/// headset that connects lands in it while Tony idles and drops to call quality (ADR 0018).
 nonisolated final class Mic: @unchecked Sendable {
     struct Summary: Sendable {
         /// The mic delivered digital silence: muted, or a built-in mic with the lid closed.
@@ -29,33 +31,32 @@ nonisolated final class Mic: @unchecked Sendable {
 
     /// RMS of the latest audio callback (about 10 ms): the HUD reads it every frame.
     var level: Float { Float(bitPattern: capture.level.load(ordering: .relaxed)) }
-    /// Called on the mic queue when the device goes away or changes mid-dictation: what was heard is kept.
+    /// Called on the mic queue when the device goes away mid-dictation: what was heard is kept.
     var onInterrupted: (@Sendable () -> Void)?
 
     private let queue = DispatchQueue(label: "com.bestboyhq.tony.mic", qos: .userInteractive)
     private let capture = Capture()
     private let log = Logger(subsystem: "com.bestboyhq.tony", category: "mic")
-    /// One engine for good, rewired on each device change: freeing one while a device change settles
-    /// crashes inside AVFAudio, whose IO unit listener still messages the freed engine.
-    private let engine = AVAudioEngine()
-    private let sink: AVAudioSinkNode
+    private let io: AudioDeviceIOBlock
 
     // Confined to `queue`.
-    /// The device the engine is wired to; nil when it isn't wired.
+    /// The device of this dictation, or of the last one.
     private var device: InputDevice?
+    /// Set while the mic is open.
+    private var proc: AudioDeviceIOProcID?
     private var converter: AVAudioConverter?
     private var deviceFormat: AVAudioFormat?
     private var timer: DispatchSourceTimer?
     private var onSamples: (@Sendable ([Float]) -> Void)?
-    private var running = false
     private var startedAt: UInt64 = 0
     private var preferredUID: String?
 
     init() {
-        sink = AVAudioSinkNode { [capture] _, frames, list in
+        io = { [capture] _, list, _, _, _ in
             // The real-time thread: no locks, no allocation, no Objective-C.
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: list))
-            let count = Int(frames)
+            guard let first = buffers.first, first.mNumberChannels > 0 else { return }
+            let count = Int(first.mDataByteSize) / MemoryLayout<Float>.size / Int(first.mNumberChannels)
             var squares: Float = 0
             var loudest: Float = 0
             capture.ring.write(count) { i in
@@ -75,34 +76,12 @@ nonisolated final class Mic: @unchecked Sendable {
             capture.level.store(count > 0 ? (squares / Float(count)).squareRoot().bitPattern : 0, ordering: .relaxed)
             if loudest > Float(bitPattern: capture.peak.load(ordering: .relaxed)) { capture.peak.store(loudest.bitPattern, ordering: .relaxed) }
             if capture.firstSample.load(ordering: .relaxed) == 0 { capture.firstSample.store(mach_absolute_time(), ordering: .relaxed) }
-            return noErr
-        }
-        engine.attach(sink)
-        // Follow the default input and plugged devices; a running dictation keeps its device.
-        for selector in [kAudioHardwarePropertyDefaultInputDevice, kAudioHardwarePropertyDevices] {
-            var address = Devices.address(selector)
-            AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue) { [weak self] _, _ in
-                guard let self, !self.running else { return }
-                self.rebuild()
-            }
-        }
-        _ = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
-            guard let self else { return }
-            self.queue.async {
-                self.log.notice("audio configuration changed")
-                // Selecting a device posts a change too: rebuilding for that one would never end.
-                // A running dictation checks its engine on each tick.
-                if !self.running, !self.wired { self.rebuild() }
-            }
         }
     }
 
     /// `uid` nil picks automatically: the default input, but the built-in mic over a Bluetooth headset.
     func use(uid: String?) {
-        queue.async { [self] in
-            preferredUID = uid
-            if !running { rebuild() }
-        }
+        queue.async { [self] in preferredUID = uid }
     }
 
     /// Opens the mic. Queued at once, so a `stop` called after it always runs after it.
@@ -130,80 +109,31 @@ nonisolated final class Mic: @unchecked Sendable {
 
     // MARK: On the queue
 
-    private func rebuild() {
-        dispatchPrecondition(condition: .onQueue(queue))
-        engine.stop()
-        engine.disconnectNodeInput(sink)
-        device = nil
-        // Touching the input before the user said yes would raise the system prompt out of context.
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
-        guard let device = Devices.resolve(uid: preferredUID) else {
-            log.error("no input device")
-            return
-        }
-        let input = engine.inputNode
-        // Selecting a device reconfigures the engine: only when it isn't selected already.
-        if let unit = input.audioUnit, Self.currentDevice(unit) != device.id {
-            var id = device.id
-            let status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, UInt32(MemoryLayout<AudioDeviceID>.size))
-            if status != noErr { log.error("can't select \(device.name, privacy: .public): \(status)") }
-        }
-        // The hardware's format: the input's output format still has the previous device's.
-        let format = input.inputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0,
-              let mono = AVAudioFormat(standardFormatWithSampleRate: format.sampleRate, channels: 1) else {
-            log.error("\(device.name, privacy: .public) has no usable format")
-            return
-        }
-        do {
-            try engine.tonyConnect(input, to: sink, format: format)
-        } catch {
-            // The format changed since it was read: its configuration change, or the next key down, rebuilds.
-            log.error("can't connect \(device.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            return
-        }
-        engine.prepare()
-        self.device = device
-        deviceFormat = mono
-        converter = AVAudioConverter(from: mono, to: Self.format)
-        log.info("prepared \(device.name, privacy: .public) at \(format.sampleRate) Hz, \(format.channelCount) ch")
-    }
-
-    /// The engine is wired to the device to use, at the format that device has now.
-    private var wired: Bool {
-        device != nil && Devices.resolve(uid: preferredUID)?.id == device?.id
-            && engine.inputNode.inputFormat(forBus: 0).sampleRate == deviceFormat?.sampleRate
-    }
-
-    private static func currentDevice(_ unit: AudioUnit) -> AudioDeviceID? {
-        var id: AudioDeviceID = 0
-        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-        return AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, &size) == noErr ? id : nil
-    }
-
     private func startOnQueue(onSamples: @escaping @Sendable ([Float]) -> Void) throws {
-        if device == nil { rebuild() }
-        guard device != nil else { throw Failure.noDevice }
+        guard proc == nil else { return }
+        // Picked at each key down, so it follows the default input and plugged devices with no listener.
+        guard let device = Devices.resolve(uid: preferredUID) else { throw Failure.noDevice }
+        guard let rate = Devices.inputRate(device.id) else {
+            log.error("\(device.name, privacy: .public) has no usable format")
+            throw Failure.noDevice
+        }
+        if deviceFormat?.sampleRate != rate { convert(from: rate) } else { converter?.reset() }
         capture.ring.reset()
         capture.peak.store(0, ordering: .relaxed)
         capture.firstSample.store(0, ordering: .relaxed)
-        converter?.reset()
-        self.onSamples = onSamples
-        do {
-            try engine.start()
-        } catch {
-            // The device changed under the prepared engine: build it again once.
-            log.error("start failed, rebuilding: \(error.localizedDescription, privacy: .public)")
-            rebuild()
-            do {
-                guard device != nil else { throw Failure.noDevice }
-                try engine.start()
-            } catch {
-                self.onSamples = nil
-                throw Failure.start(error)
-            }
+        var proc: AudioDeviceIOProcID?
+        var status = AudioDeviceCreateIOProcIDWithBlock(&proc, device.id, nil, io)
+        if status == noErr, let proc {
+            status = AudioDeviceStart(device.id, proc)
+            if status != noErr { AudioDeviceDestroyIOProcID(device.id, proc) }
         }
-        running = true
+        guard status == noErr, let proc else {
+            log.error("can't open \(device.name, privacy: .public): \(status)")
+            throw Failure.start(NSError(domain: NSOSStatusErrorDomain, code: Int(status)))
+        }
+        self.device = device
+        self.proc = proc
+        self.onSamples = onSamples
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now() + .milliseconds(20), repeating: .milliseconds(20), leeway: .milliseconds(5))
         timer.setEventHandler { [weak self] in self?.tick() }
@@ -212,9 +142,10 @@ nonisolated final class Mic: @unchecked Sendable {
     }
 
     private func stopOnQueue() -> Summary {
-        guard running else { return Summary(silent: false, device: device) }
-        engine.stop()
-        running = false
+        guard let device, let proc else { return Summary(silent: false, device: device) }
+        AudioDeviceStop(device.id, proc)
+        AudioDeviceDestroyIOProcID(device.id, proc)
+        self.proc = nil
         timer?.cancel()
         timer = nil
         drain(end: true)
@@ -224,27 +155,32 @@ nonisolated final class Mic: @unchecked Sendable {
             var info = mach_timebase_info()
             mach_timebase_info(&info)
             let ms = Double(first - startedAt) * Double(info.numer) / Double(info.denom) / 1_000_000
-            log.info("key down to first sample: \(ms, format: .fixed(precision: 1)) ms on \(self.device?.name ?? "?", privacy: .public)")
+            log.info("key down to first sample: \(ms, format: .fixed(precision: 1)) ms on \(device.name, privacy: .public)")
         }
-        let summary = Summary(silent: first > 0 && Float(bitPattern: capture.peak.load(ordering: .relaxed)) == 0, device: device)
         onSamples = nil
-        // Prepared for the next key down, after the summary is out: key up must not wait for it.
-        queue.async { [self] in
-            guard !running else { return }
-            if wired { engine.prepare() } else { rebuild() }  // the device changed meanwhile
-        }
-        return summary
+        return Summary(silent: first > 0 && Float(bitPattern: capture.peak.load(ordering: .relaxed)) == 0, device: device)
     }
 
     /// Every 20 ms of a dictation.
     private func tick() {
-        // A configuration change stops the engine, even one that leaves the device as it was: the one a
-        // selection posts can land after the dictation began. The device went away or changed: end it.
-        if !engine.isRunning, !(wired && (try? engine.start()) != nil) {
+        guard let device else { return }
+        // The device went away, or now sends what Tony can't read: end the dictation, keeping what was heard.
+        guard Devices.isRunning(device.id), let rate = Devices.inputRate(device.id) else {
             timer?.cancel()
             onInterrupted?()
+            return
+        }
+        // Its rate changed under the dictation, as a Bluetooth headset's can: convert from the new one on.
+        if rate != deviceFormat?.sampleRate {
+            drain(end: true)
+            convert(from: rate)
         }
         drain(end: false)
+    }
+
+    private func convert(from rate: Double) {
+        deviceFormat = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)
+        converter = deviceFormat.flatMap { AVAudioConverter(from: $0, to: Self.format) }
     }
 
     private func drain(end: Bool) {
