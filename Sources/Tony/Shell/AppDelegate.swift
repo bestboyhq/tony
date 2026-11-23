@@ -104,7 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let hudUpdate = dictation.onPhase
         dictation.onPhase = { [weak self] phase in
             hudUpdate?(phase)
-            self?.menuBar.setListening(phase == .listening || phase == .transcribing)
+            // The panel holds the keyboard: a dictation lands in its field, or, from Home, back in the user's app.
+            if phase == .listening, self?.menuBar.page == .home { self?.menuBar.close() }
             if phase == .idle { self?.updates.idle() }
         }
 

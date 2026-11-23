@@ -37,6 +37,7 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
 - Motion uses springs and stays smooth at 120 Hz on ProMotion; Reduce Motion swaps movement for fades.
 - Its frames hold the main thread: each one waits for WindowServer to show the last, which on a busy Mac takes tens of milliseconds.
   So the work after key up (mic, voice activity, speech) runs off the main thread and steps onto it once, to paste: four steps through it cost 150 ms of a 380 ms key up.
+  Nothing else on the main thread may run at key down or key up either, such as a menu bar icon change or a hidden view that redraws: each one drops the pill's frames.
 - The pill never blocks a click meant for the app beneath it: only a notice's action button takes the mouse.
   The voice sets the dot's colors churning and swells it; hover churns them too, read from a global mouse monitor, not from mouse events.
 - Light and dark, vibrancy that matches macOS, and Increase Contrast and Reduce Transparency respected.
