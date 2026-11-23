@@ -21,6 +21,8 @@ struct HUDView: View {
     static let exit = Duration.seconds(drop + 0.3)
 
     var body: some View {
+        // The pill waits for the caption to drop back in.
+        let shown = dictation.phase != .idle || captioned
         Liquid {
             // Liquid Glass merges shapes closer than its spacing, 14 pt, with a neck that pinches off as they part. It
             // also replaces their transitions with its own: in from a blur at full size, and out the same way.
@@ -30,13 +32,12 @@ struct HUDView: View {
                         .frame(width: Caption.width)
                         .transition(reduceMotion ? .opacity : .offset(y: 6).combined(with: .scale(scale: 0.98, anchor: .bottom)).combined(with: .opacity))
                 }
-                // It waits for the caption to drop back in.
-                if dictation.phase != .idle || captioned {
-                    Pill(dictation: dictation, mic: mic)
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
-                }
+                // Built once and kept, its timelines paused while it hides: building it cost key down a frame.
+                Pill(dictation: dictation, mic: mic, shown: shown)
             }
         }
+        // Liquid Glass ignores the opacity of a shape in its container, so the container fades.
+        .opacity(shown ? 1 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .padding(.bottom, 26)  // the pill 18 pt above the Dock, and room for its shadow
         .animation(animation, value: dictation.phase)
@@ -80,6 +81,7 @@ struct HUDView: View {
 private struct Pill: View {
     let dictation: Dictation
     let mic: Mic
+    let shown: Bool
     @State private var slow = false
     @State private var hovered = false
     @Environment(\.colorSchemeContrast) private var contrast
@@ -104,9 +106,9 @@ private struct Pill: View {
                         .buttonBorderShape(.capsule)
                 }
             default:
-                Dot(heat: hovered && !reduceMotion ? 1 : 0, voice: dictation.phase == .listening && !reduceMotion ? mic : nil)
+                Dot(heat: hovered && !reduceMotion ? 1 : 0, voice: dictation.phase == .listening && !reduceMotion ? mic : nil, paused: !shown)
                     .animation(.spring(duration: hovered ? 0.6 : 0.9), value: hovered)
-                Meter(mic: mic, working: dictation.phase == .transcribing && slow, reduceMotion: reduceMotion)
+                Meter(mic: mic, working: dictation.phase == .transcribing && slow, reduceMotion: reduceMotion, paused: !shown)
                     .frame(width: 58, height: 20)
                 if dictation.handsFree {
                     Image(systemName: "lock.fill")
@@ -118,11 +120,14 @@ private struct Pill: View {
         }
         .padding(.horizontal, 14)
         .frame(height: Shadow.height)
+        .modifier(Materialize(shown: shown, content: true, reduceMotion: reduceMotion))
         .modifier(Glass(shape: Capsule(), radius: Shadow.height / 2, increasedContrast: contrast == .increased))
-        .background(Hover { hovered = $0 })
+        .modifier(Materialize(shown: shown, content: false, reduceMotion: reduceMotion))
+        .background(Hover(active: shown) { hovered = $0 })
         .fixedSize()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(label)
+        .accessibilityHidden(!shown)
         .task(id: dictation.phase) {
             // Transcribing usually takes a blink: show it only when it takes long enough to notice.
             slow = false
@@ -346,6 +351,7 @@ private struct Dot: View, Animatable {
     var heat: Double
     /// The mic while listening: the voice heats the dot too.
     let voice: Mic?
+    let paused: Bool
     @State private var smoother = Meter.Smoother(rise: 12, fall: 3)
     @State private var swell = Meter.Smoother()
     nonisolated var animatableData: Double {
@@ -359,7 +365,7 @@ private struct Dot: View, Animatable {
     }
 
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(paused: paused)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let level = voice.map { Meter.loudness($0.level) } ?? 0
             Self.mesh(at: t, heat: max(heat, smoother.next(level, at: t)))
@@ -395,16 +401,28 @@ private struct Dot: View, Animatable {
 }
 
 /// Whether the pointer is over a view in a panel that ignores the mouse, so the pill never takes a click from the app
-/// under it.
+/// under it. It looks once a frame while the pill shows, and never between dictations, where it would wake Tony.
+/// A global mouse monitor would open a WindowServer connection each time it starts, which cost key down a frame.
 private struct Hover: NSViewRepresentable {
+    let active: Bool
     let changed: (Bool) -> Void
 
     func makeNSView(context: Context) -> Probe { Probe(changed: changed) }
-    func updateNSView(_ probe: Probe, context: Context) { probe.changed = changed }
+    func updateNSView(_ probe: Probe, context: Context) {
+        probe.changed = changed
+        probe.active = active
+    }
 
     final class Probe: NSView {
         var changed: (Bool) -> Void
-        private var monitor: Any?
+        var active = false {
+            didSet {
+                guard active != oldValue else { return }
+                link?.isPaused = !active
+                check()
+            }
+        }
+        private var link: CADisplayLink?
         private var inside = false
 
         init(changed: @escaping (Bool) -> Void) {
@@ -415,13 +433,16 @@ private struct Hover: NSViewRepresentable {
         required init?(coder: NSCoder) { nil }
 
         override func viewDidMoveToWindow() {
-            if let monitor { NSEvent.removeMonitor(monitor) }
-            monitor = window == nil ? nil : NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in self?.check() }
+            // The link holds the view until it leaves the window.
+            link?.invalidate()
+            link = window == nil ? nil : displayLink(target: self, selector: #selector(check))
+            link?.isPaused = !active
+            link?.add(to: .main, forMode: .common)
             check()
         }
 
-        private func check() {
-            let now = window.map { bounds.contains(convert($0.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)) } ?? false
+        @objc private func check() {
+            let now = active && window.map { bounds.contains(convert($0.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)) } ?? false
             guard now != inside else { return }
             inside = now
             changed(now)
@@ -434,11 +455,12 @@ private struct Meter: View {
     let mic: Mic
     let working: Bool
     let reduceMotion: Bool
+    let paused: Bool
     @State private var smoother = Smoother()
     private static let bars = 9
 
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(paused: paused)) { timeline in
             Canvas { context, size in
                 let t = timeline.date.timeIntervalSinceReferenceDate
                 let level = smoother.next(Self.loudness(mic.level), at: t)
@@ -582,6 +604,30 @@ struct Shadow: View {
             state ^= state >> 7
             state ^= state << 17
             return state
+        }
+    }
+}
+
+/// How the kept pill comes and goes, on the HUD's spring. Liquid Glass ignores the opacity of a shape in its
+/// container, so `HUDView` fades the whole container, and this adds the rest of the container's own transition,
+/// which a view that stays never gets: the content zooms down from 1.16 out of a 10 pt blur while the glass settles
+/// from 1.05. Before macOS 26 the pill pops from 0.9 like a bubble. Reduce Motion only fades.
+private struct Materialize: ViewModifier {
+    let shown: Bool
+    /// Inside the glass, for its content; outside, for the glass.
+    let content: Bool
+    let reduceMotion: Bool
+
+    func body(content view: Content) -> some View {
+        let hidden = shown || reduceMotion ? 0.0 : 1.0
+        if #available(macOS 26, *) {
+            if content {
+                view.blur(radius: 10 * hidden).scaleEffect(1 + 0.16 * hidden)
+            } else {
+                view.scaleEffect(1 + 0.05 * hidden)
+            }
+        } else {
+            view.scaleEffect(content ? 1 : 1 - 0.1 * hidden)
         }
     }
 }

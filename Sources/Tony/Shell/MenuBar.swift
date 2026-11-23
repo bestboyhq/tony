@@ -11,12 +11,14 @@ final class MenuBar: NSObject, NSWindowDelegate {
     enum Page { case home, settings, about }
 
     var page = Page.home
+    /// The panel's content exists only while it is on screen: kept, it redrew the stats on the main thread at every
+    /// key up, as the HUD animated, though nobody saw them.
+    private(set) var shown = false
     @ObservationIgnored private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     @ObservationIgnored private var panel: Panel!
     @ObservationIgnored private let app: AppDelegate
     /// On the icon while an update is available.
     @ObservationIgnored private let dot = NSView()
-    @ObservationIgnored private var listening = false
     /// Clicks in other apps and Esc close the panel.
     @ObservationIgnored private var monitors: [Any] = []
     /// A click on the icon reaches Tony first as a click in another app (the menu bar draws it), then takes the
@@ -60,20 +62,13 @@ final class MenuBar: NSObject, NSWindowDelegate {
         panel.delegate = self
     }
 
-    func setListening(_ listening: Bool) {
-        self.listening = listening
-        showIcon()
-        // The panel holds the keyboard: a dictation lands in its field, or, from Home, back in the user's app.
-        if listening, page == .home { close() }
-    }
-
     /// The mark, a ring filling around it while the model downloads, and a dot while an update is available.
     private func showIcon() {
         let available = app.updates.available != nil
         let progress = app.speech.progress
-        item.button?.image = Mark.menuBarImage(listening: listening, progress: progress)
-        // The listening icon and the ring fill the corner.
-        dot.isHidden = !available || listening || progress != nil
+        item.button?.image = Mark.menuBarImage(progress: progress)
+        // The ring fills the corner.
+        dot.isHidden = !available || progress != nil
         dot.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
         item.button?.setAccessibilityLabel(progress != nil ? "Tony, getting its speech model" : available ? "Tony, update available" : "Tony")
     }
@@ -124,6 +119,7 @@ final class MenuBar: NSObject, NSWindowDelegate {
         self.page = page
         guard !panel.isVisible, let icon else { return }
         app.permissions.refresh()
+        shown = true
         // Under the icon, clear of the screen's edges.
         let screen = (item.button?.window?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.layoutIfNeeded()
@@ -165,6 +161,11 @@ final class MenuBar: NSObject, NSWindowDelegate {
         monitors = []
     }
 
+    /// Once the panel has left the screen, its fade out included, its content goes.
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        shown = panel.occlusionState.contains(.visible)
+    }
+
     /// Another app or window took the keyboard.
     func windowDidResignKey(_ notification: Notification) {
         if !clickedIcon { close() }
@@ -188,14 +189,16 @@ private struct MenuBarView: View {
 
     var body: some View {
         Group {
-            switch menuBar.page {
-            case .home: Home(app: app, menuBar: menuBar)
-            case .settings:
-                Subpage(title: "Settings", menuBar: menuBar) {
-                    SettingsView(dictation: app.dictation, speech: app.speech, updates: app.updates)
+            if menuBar.shown {
+                switch menuBar.page {
+                case .home: Home(app: app, menuBar: menuBar)
+                case .settings:
+                    Subpage(title: "Settings", menuBar: menuBar) {
+                        SettingsView(dictation: app.dictation, speech: app.speech, updates: app.updates)
+                    }
+                case .about:
+                    Subpage(menuBar: menuBar) { AboutView() }
                 }
-            case .about:
-                Subpage(menuBar: menuBar) { AboutView() }
             }
         }
         .frame(width: 391)  // the activity grid's 26 weeks, edge to edge

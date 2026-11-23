@@ -11,6 +11,7 @@ The native macOS app around everything else.
 - A click on the menu bar icon opens a panel: status, the last dictation, stats, and settings and About as pages of their own.
   A right click (or a Control-click) opens a menu instead: About, Settings, updates, Quit.
   Like the HUD it is non-activating, so the user's app stays active: its fields still type, the first click in it works, and focus is back in the user's app the moment it closes.
+  Its content exists only while it is on screen: a closed panel's SwiftUI still redraws on each change, and the stats redrew for 10 ms at every key up.
   A click elsewhere or Esc closes it; Esc goes through a key monitor, since a focused text field takes it first.
   A click on the icon also arrives as a click in another app, since the menu bar draws it, and takes the keyboard from the panel: both close paths skip it, or the click closes the panel and opens it again.
   Tell that click by where it went down, not by a held button: a tap is up before Tony sees it.
@@ -53,6 +54,7 @@ The native macOS app around everything else.
 - The app icon is `build/Tony.icon` (Icon Composer), its one source: a capsule mic head in the color sweep of Grip's dot, over a grey glass smile on a short stem, so the two read as siblings.
   `scripts/icon.ts` draws its artwork; change the numbers there, not the SVGs.
   The menu bar icon is a template image of the same mark.
+  It shows no listening state: each new image costs 6-10 ms of the main thread while macOS 26 redraws the menu bar's copies of it, and the swaps at key down and key up dropped the HUD's frames.
 - Crash reports stay on disk, and system error codes become plain-language messages.
 - Quitting during a dictation inserts it first.
 

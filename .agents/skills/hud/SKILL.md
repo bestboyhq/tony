@@ -13,6 +13,7 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
   Between dictations it stays ordered in at alpha 0: once a full-screen Space closes, macOS pins a hidden panel to one Space for good.
 - It appears in the frame the key goes down and leaves when the text lands, once the caption has flowed back into it.
   Create the panel at launch, so showing it costs one frame.
+  The pill in it stays built between dictations, its timelines paused, so key down only shows it: building it cost the first dictation about 10 ms.
 - States: listening with the live mic level, transcribing (only when it takes long enough to notice), done, and errors.
   An error is one plain sentence with at most one action.
 - It sits at the bottom center of the display with the focused window, above the Dock.
@@ -30,15 +31,18 @@ It is most of what users ever see of Tony, so it carries the "beautiful".
   The pill waits until the drop is in, and the panel waits until both are gone (`HUDView.exit`).
   Animate the gap, never the container's spacing, which snaps.
   Removed glass dissolves in place and never flows into its neighbor: so the caption shrinks to a drop by the pill before it goes.
-  The container replaces each shape's transition with its own blur in and out, at full size, so the pill no longer pops there.
-  `.glassEffectTransition(.identity)` brings the pop back, but then the pill's glass vanishes in one frame and leaves the drop alone on screen.
+  The container replaces each shape's transition with its own blur in and out, at full size, and ignores a shape's opacity.
+  The kept pill never gets that transition, so `HUDView` fades the whole container and `Materialize` rebuilds the blur in on the HUD's spring.
+  Check it against a layer dump of an inserted pill: the content zooms down from 1.16 out of a 10 pt blur while the glass settles from 1.05.
   Never clip that glass: a clip cuts the neck.
 - Before macOS 26, the pill pops in like a bubble, from 0.9 with a little overshoot, and leaves without one.
 - Motion uses springs and stays smooth at 120 Hz on ProMotion; Reduce Motion swaps movement for fades.
 - Its frames hold the main thread: each one waits for WindowServer to show the last, which on a busy Mac takes tens of milliseconds.
   So the work after key up (mic, voice activity, speech) runs off the main thread and steps onto it once, to paste: four steps through it cost 150 ms of a 380 ms key up.
+  Nothing else on the main thread may run at key down or key up either, such as a menu bar icon change or a hidden view that redraws: each one drops the pill's frames.
 - The pill never blocks a click meant for the app beneath it: only a notice's action button takes the mouse.
-  The voice sets the dot's colors churning and swells it; hover churns them too, read from a global mouse monitor, not from mouse events.
+  The voice sets the dot's colors churning and swells it; hover churns them too, read from the pointer's location once a frame while the pill shows, not from mouse events.
+  A global mouse monitor opens a WindowServer connection each time it starts, which cost key down up to a few milliseconds.
 - Light and dark, vibrancy that matches macOS, and Increase Contrast and Reduce Transparency respected.
 - Before macOS 26, clip the vibrancy to its shape and dither its shadow: over a dark background a soft shadow spans about five gray levels, which `.shadow` draws as rings, and a screen recording sharpens them.
   Liquid Glass casts its own shadow.

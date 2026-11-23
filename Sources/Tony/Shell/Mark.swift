@@ -2,16 +2,17 @@ import AppKit
 
 /// Tony's mark, the app icon's mic (a capsule head over a smile on a short stem), as the menu bar icon.
 enum Mark {
-    /// An 18 pt template image, drawn in code so it is crisp at every scale.
-    /// While listening it inverts to a filled tile with the mark cut out, like Grip's recording icon,
-    /// so the state reads at a glance in a monochrome menu bar. While the model downloads, a ring fills
+    /// An 18 pt template image, drawn in code so it is crisp at every scale. While the model downloads, a ring fills
     /// clockwise around a smaller mark.
-    @MainActor static func menuBarImage(listening: Bool, progress: Double? = nil) -> NSImage {
+    ///
+    /// It shows no listening state: each new image costs 6-10 ms of the main thread as AppKit redraws the menu bar's
+    /// copies of the icon, and three swaps a dictation dropped the HUD's frames at key down and key up. The HUD and
+    /// the orange mic dot already show listening.
+    @MainActor static func menuBarImage(progress: Double? = nil) -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
-            let small = mic(head: CGSize(width: 4, height: 6.4), gap: 1.2, stem: 1.2, line: 1.5)
             NSColor.black.set()
             if let progress {
-                NSBezierPath(cgPath: small).fill()
+                NSBezierPath(cgPath: mic(head: CGSize(width: 4, height: 6.4), gap: 1.2, stem: 1.2, line: 1.5)).fill()
                 // 2 pt from the edge in: whole pixels at 1x too.
                 let track = NSBezierPath(ovalIn: CGRect(x: 1, y: 1, width: 16, height: 16))
                 track.lineWidth = 2
@@ -25,15 +26,11 @@ enum Mark {
                 done.stroke()
                 return true
             }
-            let shape = listening
-                ? CGPath(roundedRect: CGRect(x: 0.5, y: 0.5, width: 17, height: 17), cornerWidth: 4.2, cornerHeight: 4.2, transform: nil)
-                    .subtracting(small)
-                : mic(head: CGSize(width: 6, height: 9.6), gap: 1.4, stem: 1.8, line: 1.7)
-            NSBezierPath(cgPath: shape).fill()
+            NSBezierPath(cgPath: mic(head: CGSize(width: 6, height: 9.6), gap: 1.4, stem: 1.8, line: 1.7)).fill()
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = progress != nil ? "Tony, getting its speech model" : listening ? "Tony, listening" : "Tony"
+        image.accessibilityDescription = progress != nil ? "Tony, getting its speech model" : "Tony"
         return image
     }
 
