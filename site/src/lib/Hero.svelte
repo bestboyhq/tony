@@ -248,7 +248,8 @@
 	.card .window,
 	.card .horizon,
 	.card .gl,
-	.card .plate {
+	.card .plate,
+	.card .plate::before {
 		animation: none;
 	}
 

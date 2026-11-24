@@ -155,6 +155,9 @@ async function launch(): Promise<Chrome> {
 		CHROME,
 		[
 			'--headless',
+			// It loads only this site's own build, and Chrome cannot start its sandbox inside another one, such as a
+			// container's or an agent's.
+			'--no-sandbox',
 			'--remote-debugging-port=0',
 			`--user-data-dir=${profile}`,
 			'--no-first-run',
