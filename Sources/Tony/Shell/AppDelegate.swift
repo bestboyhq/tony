@@ -21,6 +21,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             RunLoop.main.run()
         }
+        if CommandLine.arguments.dropFirst().first == "--panel" {
+            Task { exit(await panel()) }
+            NSApplication.shared.setActivationPolicy(.accessory)
+            NSApplication.shared.run()
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -32,22 +37,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// 20 ms chunks like the mic does, one file after another on the warm model. Times key up: what is left once
     /// the audio is in. Only `-realtime YES`, which feeds as fast as the mic would, leaves the background its time.
     /// Prints each preview the HUD would show, at its time in the audio, to standard error; `-hud YES` draws the HUD
-    /// too, under the desktop picture, for a window recording.
+    /// too, on its `stage`, for a window recording: `-backdrop <png>` sets the scene behind it, for the glass to bend,
+    /// and `-landed <png>` swaps in the scene with the text typed the moment it lands (`scripts/readme`).
     private static func transcribe(_ paths: some Collection<String>) async -> Int32 {
         let speech = Speech()
         await speech.prepare()
         await speech.learn(Prefs.words)
         let dictation = UserDefaults.standard.bool(forKey: "hud") ? Dictation(speech: speech, ducking: nil) : nil
-        // The HUD's view on a plain dark backdrop, in a window under the desktop picture: a window recording of it
-        // shows the same each time, and the user's screen shows none of it.
+        let scenes = ["backdrop", "landed"].map(image)
+        let scene = scenes[0].map(Self.scene)
+        // With no scene, on a plain dark backdrop.
         let window = dictation.map { dictation in
-            let window = NSWindow(contentRect: NSRect(origin: .zero, size: HUD.size), styleMask: .borderless, backing: .buffered, defer: false)
-            window.contentView = NSHostingView(rootView: HUDView(dictation: dictation, mic: dictation.mic)
-                .background(LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)], startPoint: .top, endPoint: .bottom)))
-            window.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)) - 1)
-            window.orderFrontRegardless()
-            return window
+            let hud = NSHostingView(rootView: HUDView(dictation: dictation, mic: dictation.mic)
+                .background(scene == nil ? LinearGradient(colors: [Color(white: 0.2), Color(white: 0.1)], startPoint: .top, endPoint: .bottom) : nil))
+            hud.frame.size = scene?.frame.size ?? HUD.size
+            scene?.addSubview(hud)
+            return stage(scene ?? hud)
         }
+        // A beat before the first word, so a recording catches the pill coming in.
+        if dictation != nil { try? await Task.sleep(for: .seconds(1)) }
         // Under the desktop picture the window is hidden, so App Nap would stop drawing it a few seconds in.
         let activity = window.map { _ in ProcessInfo.processInfo.beginActivity(options: .userInitiated, reason: "Drawing the HUD for a recording") }
         defer { withExtendedLifetime((window, activity)) {} }
@@ -82,11 +90,73 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let timing = String(format: "%.1f s of audio, key up to text %.0f ms\n", Double(samples.count) / 16000, Date().timeIntervalSince(keyUp) * 1000)
             FileHandle.standardError.write(Data(timing.utf8))
             if let dictation {
+                if let landed = scenes[1] { scene?.image = landed }
                 dictation.show("", .idle)
                 try? await Task.sleep(for: .seconds(1))
             }
         }
         return 0
+    }
+
+    /// `Tony --panel -backdrop <png> -stats <json> -last <text>`: the panel's Home and Settings side by side on the
+    /// scene, on a `stage` for a window recording, for the README's still. The stats, their days counted back from
+    /// today (0 is today), and the last dictation stand in for the user's, so theirs never show; Settings shows the
+    /// preferences passed the same way, such as `-words '(Tailscale, Vercel)'`.
+    private static func panel() async -> Int32 {
+        guard let scene = image("backdrop").map(Self.scene),
+              let json = UserDefaults.standard.string(forKey: "stats").flatMap(FileManager.default.contents(atPath:)),
+              var stats = try? JSONDecoder().decode(Stats.self, from: json) else {
+            print("usage: Tony --panel -backdrop <png> -stats <json> -last <text>")
+            return 1
+        }
+        stats.days = Dictionary(uniqueKeysWithValues: stats.days.map { (Stats.day() + $0.key, $0.value) })
+        let app = AppDelegate()
+        app.dictation.pretend(UserDefaults.standard.string(forKey: "last") ?? "", stats: stats)
+        // Ready, so Home says what to hold.
+        await app.speech.prepare()
+        // Their glass 48 pt apart, centered, 40 pt from the top.
+        let margin = PanelBackground.margin
+        let pages = NSHostingView(rootView: HStack(alignment: .top, spacing: 48 - 2 * margin) {
+            MenuBar.page(.home, app: app)
+            MenuBar.page(.settings, app: app)
+        }
+        .padding(.top, 40 - margin)
+        .frame(width: scene.frame.width, height: scene.frame.height, alignment: .top))
+        pages.frame = scene.bounds
+        scene.addSubview(pages)
+        let window = stage(scene)
+        try? await Task.sleep(for: .seconds(2))
+        withExtendedLifetime(window) {}
+        return 0
+    }
+
+    /// The image at the path in the preference `key`, such as `-backdrop <png>`.
+    private static func image(_ key: String) -> NSImage? {
+        UserDefaults.standard.string(forKey: key).flatMap(NSImage.init(contentsOfFile:))
+    }
+
+    /// A scene drawn at 2x, by `scripts/readme`, at half its pixels in points.
+    private static func scene(_ image: NSImage) -> NSImageView {
+        let view = NSImageView(frame: NSRect(x: 0, y: 0, width: image.representations[0].pixelsWide / 2, height: image.representations[0].pixelsHigh / 2))
+        view.image = image
+        view.imageScaling = .scaleAxesIndependently
+        return view
+    }
+
+    /// A window for `view` under the desktop picture: a window recording of it shows the same each time, and the
+    /// user's screen shows none of it. `-appearance light` or `dark` sets its appearance.
+    private static func stage(_ view: NSView) -> NSWindow {
+        let window = NSWindow(contentRect: view.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = view
+        // Its controls live, as the panel draws them while it holds the keyboard, yet the keyboard stays with the user.
+        let live = Selector(("_setForceActiveControls:"))
+        if window.responds(to: live) {
+            unsafeBitCast(window.method(for: live), to: (@convention(c) (NSWindow, Selector, Bool) -> Void).self)(window, live, true)
+        }
+        window.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopWindow)) - 1)
+        window.appearance = UserDefaults.standard.string(forKey: "appearance").map { NSAppearance(named: $0 == "light" ? .aqua : .darkAqua)! }
+        window.orderFrontRegardless()
+        return window
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

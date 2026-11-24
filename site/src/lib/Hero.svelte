@@ -1,13 +1,17 @@
+<!-- The hero, after Grip's: the eyebrow and the headline with its quiet second sentence beside the pitch, then Tony
+     itself on the lit plate: its pill and caption, recorded from the app, as a voice prompts a coding agent and the
+     text lands in its prompt (`scripts/readme/make.ts`). The landing page adds the lede, buttons, and fine print. As a card it is the Open Graph image's source (`/og`): settled, the clip's dark still cut to the prompt, the
+     caption, and the pill. -->
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import Arrow from '#lib/Arrow.svelte';
 	import Glow, { type Layer } from '#lib/Glow.svelte';
 	import Icon from '#lib/Icon.svelte';
-	import Pill from '#lib/Pill.svelte';
+	import Media from '#lib/Media.svelte';
 	import { GITHUB_URL } from '#lib/links.ts';
-	import type { Snippet } from 'svelte';
 
 	type Props = {
-		/** What follows the headline on the home page: the lede, the buttons, and the fine print. */
+		/** Beside the headline: the lede, the buttons, and the fine print. */
 		children?: Snippet;
 		/** The hero as Tony's Open Graph image shows it: `pnpm og` screenshots it from `/og`. */
 		card?: boolean;
@@ -16,20 +20,26 @@
 	let { children, card = false }: Props = $props();
 
 	const HORIZON: readonly Layer[] = [{ box: [0, -0.46, 1, 0.9], peak: [0.42, 0.86], start: 0.18 }];
+	const ALT =
+		'Tony recorded as it runs: a terminal where a coding agent just fixed expired coupon codes, and Tony’s pill at the foot of the screen. A voice says “Nice, now do the same for gift cards, and make the error say the date the code expired, so people know it is not a typo.” The pill’s bars follow it, and a glass caption buds out of the pill, each word fading in as it is said. When the voice stops, the caption flows back into the pill and the sentence lands in the agent’s prompt, 63 ms later.';
 </script>
 
 <section class="hero" class:card aria-labelledby="hero-title">
 	<div class="wrap intro">
-		<a class="eyebrow" href={GITHUB_URL}>
-			<Icon name="github" size={14} />
-			<span>Free and open source macOS app</span>
-			<Arrow class="ahead" />
-		</a>
-		<h1 id="hero-title">
-			<span>Talk to your AI agents.</span>
-			<span class="quiet">Free, private dictation for Mac.</span>
-		</h1>
-		{@render children?.()}
+		<div class="title">
+			<a class="eyebrow" href={GITHUB_URL}>
+				<Icon name="github" size={14} />
+				<span>Free and open source macOS app</span>
+				<Arrow class="ahead" />
+			</a>
+			<h1 id="hero-title">
+				<span>Talk to your AI agents.</span>
+				<span class="quiet">Free, private dictation for Mac.</span>
+			</h1>
+		</div>
+		{#if children}
+			<div class="pitch">{@render children()}</div>
+		{/if}
 	</div>
 	<div class="plate beat">
 		<div class="horizon" aria-hidden="true"></div>
@@ -37,23 +47,38 @@
 			<Glow layers={HORIZON} opacity={0.85} />
 		</div>
 		<div class="wrap window">
-			<Pill still={card} />
+			{#if card}
+				<Media still="hero" take="dark" width={1440} height={936} crop={[0, 444, 1440, 492]} r={24} eager alt={ALT} />
+			{:else}
+				<Media clip="hero" width={1440} height={936} crop={[0, 216, 1440, 720]} r={24} eager alt={ALT} />
+			{/if}
 		</div>
 	</div>
 </section>
 
 <style>
-	/* An app's hero has no panel, and the painting glows behind its window, never behind text. */
-
+	/* The headline and lede beside the pitch, both settled on the line under them, so the clip starts on the first
+	   screen. The pitch is as wide as its buttons, and its fine print wraps to them. */
 	.intro {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		column-gap: 56px;
+		align-items: end;
+		padding-block: 40px;
+	}
+
+	.pitch > :global(p) {
+		contain: inline-size;
+	}
+
+	.title {
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
-		padding-top: 72px;
-		padding-bottom: 64px;
 	}
 
-	.intro > :global(*),
+	.title > :global(*),
+	.pitch > :global(*),
 	.window {
 		animation: blur-in calc(var(--duration) * var(--pace)) var(--enter-ease)
 			calc(var(--delay) * var(--pace)) backwards;
@@ -89,8 +114,8 @@
 		--blur: 12px;
 		--duration: 1400ms;
 		--delay: 0ms;
-		margin-top: 24px;
-		font-size: clamp(38px, 5.2vw, 68px);
+		margin-top: 20px;
+		font-size: clamp(34px, 3.2vw, 46px); /* two lines in its column from 1024 px up */
 		font-weight: 550;
 		line-height: 1.02;
 		letter-spacing: -0.04em;
@@ -118,7 +143,7 @@
 			transparent 96%
 		);
 		isolation: isolate;
-		padding: 64px 0;
+		padding: 40px 0;
 		background: linear-gradient(var(--panel) 0 0) 50% 0 / var(--col) 100% no-repeat;
 	}
 
@@ -161,12 +186,20 @@
 		animation: seam calc(1600ms * var(--pace)) var(--enter-ease) calc(450ms * var(--pace)) backwards;
 	}
 
+	/* The bottom of a screen, where Tony lives: the agent's last lines, its prompt, the caption, and the pill. As wide
+	   as the first screen leaves room for, so the pill shows without a scroll. */
 	.window {
 		--rise: 6px;
 		--blur: 8px;
 		--duration: 1400ms;
 		--delay: 350ms;
 		position: relative;
+		display: flex;
+		justify-content: center;
+	}
+
+	.window > :global(*) {
+		max-width: max(720px, (100svh - 400px) * 2);
 	}
 
 	@keyframes grow {
@@ -188,8 +221,8 @@
 		}
 	}
 
-	/* The Open Graph card: 1200x630 in the dark theme, settled, its headline larger for a feed's small preview,
-	   and the stage cut off by the bottom edge. */
+	/* The Open Graph card: 1200x630 in the dark theme, settled, its headline larger for a feed's small preview, and the
+	   still cut to what Tony draws. */
 	.card {
 		height: 630px;
 		overflow: hidden;
@@ -199,18 +232,19 @@
 	}
 
 	.card .intro {
-		padding-block: 40px 44px;
+		grid-template-columns: minmax(0, 1fr);
+		padding-block: 32px 36px;
 	}
 
 	.card h1 {
-		font-size: 80px;
+		font-size: 64px;
 	}
 
-	.card .plate {
-		padding-top: 48px;
+	.card .window > :global(*) {
+		max-width: 900px;
 	}
 
-	.card .intro > :global(*),
+	.card .title > :global(*),
 	.card .window,
 	.card .horizon,
 	.card .gl,
@@ -230,15 +264,24 @@
 		}
 	}
 
-	@media (max-width: 1023px) {
+	/* The split needs the column at its full width; narrower, the pitch goes under the headline. */
+	@media (max-width: 1279px) {
 		.intro {
-			padding-top: 56px;
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		h1 {
+			font-size: clamp(34px, 6vw, 46px);
+		}
+
+		.pitch {
+			margin-top: 32px;
 		}
 	}
 
 	@media (max-width: 639px) {
 		.plate {
-			padding: 40px 0;
+			padding: 32px 0;
 		}
 
 		.window {
@@ -247,7 +290,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.intro > :global(*),
+		.title > :global(*),
+		.pitch > :global(*),
 		.window {
 			animation: fade-in 400ms ease backwards;
 		}

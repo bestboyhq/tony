@@ -14,7 +14,8 @@ final class MenuBar: NSObject, NSWindowDelegate {
     /// The panel's content exists only while it is on screen: kept, it redrew the stats on the main thread at every
     /// key up, as the HUD animated, though nobody saw them.
     private(set) var shown = false
-    @ObservationIgnored private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    /// None for the README's still, which shows a page with no icon in the menu bar.
+    @ObservationIgnored private let item: NSStatusItem?
     @ObservationIgnored private var panel: Panel!
     @ObservationIgnored private let app: AppDelegate
     /// On the icon while an update is available.
@@ -25,15 +26,16 @@ final class MenuBar: NSObject, NSWindowDelegate {
     /// keyboard from the panel, and only then calls `click`: it is `click`'s to close the panel, or it opens again.
     @ObservationIgnored private var clickedIcon = false
 
-    init(app: AppDelegate) {
+    init(app: AppDelegate, icon: Bool = true) {
         self.app = app
+        item = icon ? NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength) : nil
         super.init()
-        item.button?.target = self
-        item.button?.action = #selector(click)
+        item?.button?.target = self
+        item?.button?.action = #selector(click)
         // On mouse up: a menu opened on mouse down takes the mouse up from the button, which then spends the
         // next click on the icon finishing its own.
-        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        if let button = item.button {
+        item?.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        if let button = item?.button {
             // Over the mark's empty top right corner, in color, since a template image is one.
             dot.wantsLayer = true
             dot.layer?.cornerRadius = 3
@@ -66,11 +68,11 @@ final class MenuBar: NSObject, NSWindowDelegate {
     private func showIcon() {
         let available = app.updates.available != nil
         let progress = app.speech.progress
-        item.button?.image = Mark.menuBarImage(progress: progress)
+        item?.button?.image = Mark.menuBarImage(progress: progress)
         // The ring fills the corner.
         dot.isHidden = !available || progress != nil
         dot.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
-        item.button?.setAccessibilityLabel(progress != nil ? "Tony, getting its speech model" : available ? "Tony, update available" : "Tony")
+        item?.button?.setAccessibilityLabel(progress != nil ? "Tony, getting its speech model" : available ? "Tony, update available" : "Tony")
     }
 
     /// Shows the icon, and again whenever what it shows changes. Once: each call adds a watch that renews itself.
@@ -88,9 +90,9 @@ final class MenuBar: NSObject, NSWindowDelegate {
         }
         close()
         // A status item with a menu opens it on a click, and sends no action.
-        item.menu = menu()
-        item.button?.performClick(nil)
-        item.menu = nil
+        item?.menu = menu()
+        item?.button?.performClick(nil)
+        item?.menu = nil
     }
 
     private func menu() -> NSMenu {
@@ -121,14 +123,14 @@ final class MenuBar: NSObject, NSWindowDelegate {
         app.permissions.refresh()
         shown = true
         // Under the icon, clear of the screen's edges.
-        let screen = (item.button?.window?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        let screen = (item?.button?.window?.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.layoutIfNeeded()
         let size = panel.frame.size
         let margin = PanelBackground.margin
         let x = min(max(icon.midX - size.width / 2, screen.minX + 8 - margin), screen.maxX - size.width - 8 + margin)
         panel.setFrameTopLeftPoint(NSPoint(x: x.rounded(), y: icon.minY - 6 + margin))
         panel.makeKeyAndOrderFront(nil)
-        item.button?.highlight(true)
+        item?.button?.highlight(true)
         monitors = [
             NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
                 guard let self else { return }
@@ -146,9 +148,16 @@ final class MenuBar: NSObject, NSWindowDelegate {
         ].compactMap { $0 }
     }
 
+    /// A page of the panel on its own, with no icon in the menu bar, for the README's still (`Tony --panel`).
+    static func page(_ page: Page, app: AppDelegate) -> some View {
+        let menuBar = MenuBar(app: app, icon: false)
+        (menuBar.page, menuBar.shown) = (page, true)
+        return MenuBarView(app: app, menuBar: menuBar)
+    }
+
     /// The icon's frame on screen.
     private var icon: NSRect? {
-        guard let button = item.button, let window = button.window else { return nil }
+        guard let button = item?.button, let window = button.window else { return nil }
         return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
@@ -156,7 +165,7 @@ final class MenuBar: NSObject, NSWindowDelegate {
         guard panel.isVisible else { return }
         clickedIcon = false
         panel.orderOut(nil)
-        item.button?.highlight(false)
+        item?.button?.highlight(false)
         monitors.forEach(NSEvent.removeMonitor)
         monitors = []
     }

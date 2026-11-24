@@ -17,17 +17,19 @@ export const IMAGE = join(site, 'src/lib/assets/og.png');
 export const SUMS = join(site, 'src/lib/assets/og.sha256');
 
 // The view, the root layout and page shell it renders in, and this script, followed through their imports and their
-// stylesheets' url()s down to the fonts and images.
+// stylesheets' url()s down to the fonts and images; and the hero's still, which Media names in a url() of its own.
 const ROOTS = [
 	'src/routes/og/+page.svelte',
 	'src/routes/+layout.svelte',
 	'src/app.html',
 	'scripts/og.ts',
+	'static/media/hero.webp',
 ];
 
-// SvelteKit's and Node's own modules, links.ts (its URLs and menus never show in the image), and what is not a file.
+// SvelteKit's and Node's own modules, links.ts (its URLs and menus never show in the image), and what is not a file,
+// such as a url() a Svelte expression builds.
 const SKIP =
-	/^(?:node:|svelte(?:\/|$)|\$app\/|\$env\/|#lib\/links\.ts$|#(?!lib\/)|data:|https?:)|\$types$/u;
+	/^(?:node:|svelte(?:\/|$)|\$app\/|\$env\/|#lib\/links\.ts$|#(?!lib\/)|data:|https?:|\{)|\$types$/u;
 
 function locate(specifier: string, from: string): string | undefined {
 	const path = specifier.replace(/\?.*$/u, '');
@@ -153,6 +155,9 @@ async function launch(): Promise<Chrome> {
 		CHROME,
 		[
 			'--headless',
+			// It loads only this site's own build, and Chrome cannot start its sandbox inside another one, such as a
+			// container's or an agent's.
+			'--no-sandbox',
 			'--remote-debugging-port=0',
 			`--user-data-dir=${profile}`,
 			'--no-first-run',

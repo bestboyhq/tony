@@ -302,6 +302,12 @@ final class Dictation {
         if !Paste.paste(lastText) { pasteFailed() }
     }
 
+    /// A last dictation and stats that never happened, for the README's still (`Tony --panel`); never saved.
+    func pretend(_ text: String, stats: Stats) {
+        lastText = text
+        self.stats = stats
+    }
+
     /// Quitting mid-dictation inserts it first.
     func finishForQuit() async {
         if phase == .listening {

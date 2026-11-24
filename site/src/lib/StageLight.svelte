@@ -261,9 +261,13 @@ void main() {
 		const stage = canvas.getBoundingClientRect();
 		const box = caster.getBoundingClientRect();
 		const scale = stage.width > 0 ? canvas.width / stage.width : 1;
+		// Media's frame sets its corner in percentages of its box (`a% / b%`), and the computed style keeps them.
+		const [across = '', down = across] = getComputedStyle(caster).borderTopLeftRadius.split(' ');
+		const length = (value: string, size: number): number =>
+			(Number.parseFloat(value) || 0) * (value.endsWith('%') ? size / 100 : 1);
 		return {
 			rect: [(box.left - stage.left) * scale, (box.top - stage.top) * scale, box.width * scale, box.height * scale],
-			radius: (Number.parseFloat(getComputedStyle(caster).borderTopLeftRadius) || 0) * scale,
+			radius: Math.min(length(across, box.width), length(down, box.height)) * scale,
 			sigma: (CAST.blur / 2) * scale,
 			offset: CAST.offset * scale,
 			spread: CAST.spread * scale,
