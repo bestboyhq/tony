@@ -14,6 +14,4 @@ export default defineConfig({
 			output: { bundleStrategy: 'single' },
 		}),
 	],
-	// The README's images in .github/assets, outside this folder.
-	server: { fs: { allow: ['..'] } },
 });

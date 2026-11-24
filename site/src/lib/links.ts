@@ -101,14 +101,16 @@ export const MENUS: readonly Menu[] = [
 			{
 				label: 'Dictate',
 				links: [
-					{ title: 'Prompting', href: `${HOME}#prompting`, line: 'Speak your prompt to any agent' },
-					{ title: 'Speed', href: `${HOME}#fast`, line: 'About 50 ms a sentence' },
-					{ title: 'Accuracy', href: `${HOME}#accurate`, line: '25 languages, detected as you speak' },
+					{ title: 'Prompting', href: `${HOME}#prompting`, line: 'Talk for minutes, wait for none' },
+					{ title: 'Your words', href: `${HOME}#words`, line: 'Names and jargon spelled your way' },
+					{ title: 'Languages', href: `${HOME}#languages`, line: '25, detected as you speak' },
+					{ title: 'Accuracy', href: `${HOME}#accurate`, line: 'Parakeet Ultra on your Mac' },
 				],
 			},
 			{
 				label: 'On your Mac',
 				links: [
+					{ title: 'Speed', href: `${HOME}#fast`, line: 'About 50 ms a sentence' },
 					{ title: 'Menu bar', href: `${HOME}#stats`, line: 'Your last dictation and your stats' },
 					{ title: 'Every app', href: `${HOME}#everywhere`, line: 'If it takes paste, it takes Tony' },
 					{ title: 'Offline', href: `${HOME}#private`, line: 'Your voice never leaves the Mac' },

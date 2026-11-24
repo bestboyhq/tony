@@ -1,14 +1,20 @@
+<!-- Tony's landing page, after Grip's: the hero plays Tony's own pill as a voice prompts a coding agent, then beat by
+     beat how a dictation goes (long prompts, your words, languages), how fast and accurate it is, the menu bar panel,
+     where it works, the bugs it designs out, why it is safe to rely on, the family, the questions, and the close. Every
+     clip and still is Tony's own (`scripts/readme/make.ts`), and every claim and number comes from the README. -->
 <script lang="ts">
-	import panelHome from '../../../../.github/assets/home.webp';
-	import panelSettings from '../../../../.github/assets/settings.webp';
-	import notice from '../../../../.github/assets/notice.webp';
+	import type { Snippet } from 'svelte';
 	import Arrow from '#lib/Arrow.svelte';
 	import BeatLabel, { type Beat } from '#lib/BeatLabel.svelte';
 	import FeatureRow from '#lib/FeatureRow.svelte';
 	import Glow, { within, type Box, type Layer } from '#lib/Glow.svelte';
 	import Head from '#lib/Head.svelte';
 	import Hero from '#lib/Hero.svelte';
+	import Icon from '#lib/Icon.svelte';
+	import Media from '#lib/Media.svelte';
 	import SectionHeading from '#lib/SectionHeading.svelte';
+	import StageLight from '#lib/StageLight.svelte';
+	import { asset } from '$app/paths';
 	import {
 		BESTBOY_URL,
 		docHref,
@@ -40,10 +46,13 @@
 		'numbers',
 		'how',
 		'prompting',
+		'words',
+		'languages',
 		'fast',
 		'accurate',
 		'stats',
 		'everywhere',
+		'bugs',
 		'private',
 		'family',
 		'faq',
@@ -85,35 +94,47 @@
 		};
 	});
 
-	const schema = {
-		'@context': 'https://schema.org',
-		'@type': 'SoftwareApplication',
-		name: 'Tony',
-		description: SITE_DESCRIPTION,
-		url: SITE_URL,
-		applicationCategory: 'UtilitiesApplication',
-		applicationSubCategory: 'Dictation',
-		operatingSystem: 'macOS 15 or later',
-		processorRequirements: 'Apple silicon',
-		downloadUrl: DOWNLOAD_URL,
-		license: 'https://www.gnu.org/licenses/agpl-3.0.html',
-		isAccessibleForFree: true,
-		offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-		image: `${SITE_ORIGIN}${ICONS.tony}`,
-		screenshot: `${SITE_ORIGIN}${panelHome}`,
-		featureList: [
-			'Dictate prompts to AI agents like Claude Code and Codex, in a terminal, an editor, or any chat box',
-			'Hold a key to dictate into any app',
-			'On-device, offline speech to text on the Neural Engine',
-			'25 languages, detected as you speak',
-			'Your words: names, brands, and jargon spelled your way',
-			'Filler words removed',
-			'Your words shown as you speak',
-		],
-		softwareHelp: { '@type': 'CreativeWork', url: `${SITE_URL}/docs` },
-		sameAs: [GITHUB_URL],
-		author: { '@type': 'Organization', name: 'Bestboy', url: BESTBOY_URL },
-	};
+	// What search engines and assistants read: the app, free, and the questions below word for word.
+	const schema = $derived([
+		{
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareApplication',
+			name: 'Tony',
+			description: SITE_DESCRIPTION,
+			url: SITE_URL,
+			applicationCategory: 'UtilitiesApplication',
+			applicationSubCategory: 'Dictation',
+			operatingSystem: 'macOS 15 or later',
+			processorRequirements: 'Apple silicon',
+			downloadUrl: DOWNLOAD_URL,
+			license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+			isAccessibleForFree: true,
+			offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+			image: `${SITE_ORIGIN}${ICONS.tony}`,
+			screenshot: `${SITE_ORIGIN}${asset('media/panel.webp')}`,
+			featureList: [
+				'Dictate prompts to AI agents like Claude Code and Codex, in a terminal, an editor, or any chat box',
+				'Hold a key to dictate into any app',
+				'On-device, offline speech to text on the Neural Engine',
+				'25 languages, detected as you speak',
+				'Your words: names, brands, and jargon spelled your way',
+				'Filler words removed',
+				'Your words shown as you speak',
+			],
+			softwareHelp: { '@type': 'CreativeWork', url: `${SITE_URL}/docs` },
+			sameAs: [GITHUB_URL],
+			author: { '@type': 'Organization', name: 'Bestboy', url: BESTBOY_URL },
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'FAQPage',
+			mainEntity: data.faqs.map(({ question, answer }) => ({
+				'@type': 'Question',
+				name: question,
+				acceptedAnswer: { '@type': 'Answer', text: answer },
+			})),
+		},
+	]);
 
 	const numbers = [
 		{ value: '~50 ms', label: 'per sentence' },
@@ -122,7 +143,9 @@
 		{ value: '0 bytes', label: 'of audio leave your Mac' },
 	];
 
-	const steps = [
+	type Cell = Readonly<{ title: string; body: string }>;
+
+	const steps: readonly Cell[] = [
 		{
 			title: 'Hold a key',
 			body: 'Listening starts the instant your key goes down, so your first word counts. Double-tap it for a long brief, hands free.',
@@ -134,6 +157,110 @@
 		{
 			title: 'Let go',
 			body: 'Your prompt lands where the cursor is: your agent in the terminal, your editor, or any chat box. You press Return.',
+		},
+	];
+
+	// Tony on the Neural Engine of a MacBook Pro with M5 Pro, median of 5 runs, drawn to scale.
+	const speed = [
+		{ name: '5 seconds', note: 'A sentence', ms: 49 },
+		{ name: '13 seconds', note: 'A short paragraph', ms: 70 },
+		{ name: '26 seconds', note: 'A long prompt', ms: 147 },
+	];
+	const slowest = Math.max(...speed.map((row) => row.ms));
+
+	// English word error rate over the Open ASR Leaderboard sets, drawn to scale from zero.
+	const models = [
+		{ name: 'Whisper large-v3', note: '1.55 B parameters', wer: 7.44 },
+		{ name: 'Parakeet TDT v3', note: '0.6 B parameters', wer: 6.26 },
+		{ name: 'Parakeet Ultra', note: 'In Tony, 0.6 B parameters', wer: 5.8, tony: true },
+	];
+	const worst = Math.max(...models.map((row) => row.wer));
+
+	let panel = $state<HTMLElement>();
+	let panelLit = $state(false);
+
+	const everywhere: readonly Cell[] = [
+		{
+			title: 'Every layout',
+			body: 'QWERTY, Dvorak, and Cyrillic layouts all paste correctly, and a dictation lands as one paste, so undo is one ⌘Z.',
+		},
+		{
+			title: 'Shortcuts still work',
+			body: 'Press another key with yours, and Tony steps aside for the shortcut.',
+		},
+		{
+			title: 'Problems in plain words',
+			body: 'A muted mic or an app holding secure input gets one sentence and, where it helps, the button that fixes it.',
+		},
+		{
+			title: 'Updates itself',
+			body: 'It checks quietly, never with a window over your work, and installs the newest release once you finish talking.',
+		},
+	];
+
+	const bugs: readonly Cell[] = [
+		{
+			title: 'The first word is lost while the app wakes up',
+			body: 'The mic opens on key down, before you speak.',
+		},
+		{
+			title: 'The first dictation of the day is slow',
+			body: 'The model loads at launch and pays its Neural Engine setup up front.',
+		},
+		{
+			title: 'A long ramble means a long wait',
+			body: 'Tony transcribes at each pause while you talk.',
+		},
+		{
+			title: 'A quiet room types “Thank you.”',
+			body: 'Voice activity detection trims the silence, and silence types nothing.',
+		},
+		{
+			title: 'A failed paste loses your words',
+			body: 'Every dictation stays on the clipboard, and the last one in the panel.',
+		},
+		{
+			title: 'The text lands in the wrong window',
+			body: 'The pill and the panel never take focus.',
+		},
+		{
+			title: 'Dvorak or Cyrillic fires a shortcut instead of pasting',
+			body: 'Tony presses the key that types V in your layout.',
+		},
+		{
+			title: 'A Bluetooth headset drops to phone-call quality',
+			body: 'Tony prefers the built-in mic, and opens a mic only while you talk.',
+		},
+		{
+			title: 'The orange mic dot stays on all day',
+			body: 'Between dictations Tony holds no audio device.',
+		},
+		{
+			title: 'Your music plays into the mic',
+			body: 'Other audio fades out and pauses while you talk.',
+		},
+		{
+			title: 'Unplugging the mic loses the sentence',
+			body: 'Tony types what it heard.',
+		},
+		{
+			title: 'Quitting mid‑dictation loses it',
+			body: 'Quitting types it first.',
+		},
+	];
+
+	const trust: readonly Cell[] = [
+		{
+			title: 'On your Mac',
+			body: 'Audio stays in memory and is never written to disk. Once the model is downloaded, Tony dictates offline.',
+		},
+		{
+			title: 'No account',
+			body: 'Tony goes online only to download its models once, to check for updates, and to share usage stats, never what you say or type. Turn it off in Settings.',
+		},
+		{
+			title: 'Open source',
+			body: 'The code is public under AGPL-3.0, and CI builds every release from a tagged commit, so you can check what you run.',
 		},
 	];
 
@@ -160,33 +287,6 @@
 			icon: ICONS.malini,
 		},
 	];
-
-	const speed = [
-		{ spoken: '5 seconds', time: '49 ms' },
-		{ spoken: '13 seconds', time: '70 ms' },
-		{ spoken: '26 seconds', time: '147 ms' },
-	];
-
-	const models = [
-		{ name: 'Whisper large-v3', wer: '7.44%', params: '1.55 B' },
-		{ name: 'Parakeet TDT v3', wer: '6.26%', params: '0.6 B' },
-		{ name: 'Parakeet Ultra,', suffix: 'in Tony', wer: '5.80%', params: '0.6 B', tony: true },
-	];
-
-	const trust = [
-		{
-			title: 'On your Mac',
-			body: 'Audio stays in memory and is never written to disk. Once the model is downloaded, Tony dictates offline.',
-		},
-		{
-			title: 'No account',
-			body: 'Tony goes online only to download its models once, to check for updates, and to share usage stats, never what you say or type. Turn it off in Settings.',
-		},
-		{
-			title: 'Open source',
-			body: 'The code is public under AGPL-3.0, and CI builds every release from a tagged commit, so you can check what you run.',
-		},
-	];
 </script>
 
 <Head
@@ -196,20 +296,44 @@
 	{schema}
 />
 
+<!-- The hero clip's still in the system's theme, which shows until the clip plays. -->
+<svelte:head>
+	<link
+		rel="preload"
+		as="image"
+		href={asset('media/hero.webp')}
+		media="(prefers-color-scheme: dark)"
+		fetchpriority="high"
+	/>
+	<link
+		rel="preload"
+		as="image"
+		href={asset('media/hero-light.webp')}
+		media="(prefers-color-scheme: light)"
+		fetchpriority="high"
+	/>
+</svelte:head>
+
 <Hero>
 	<p class="lede">
-		<strong>Hold a key, speak your prompt, let go.</strong>
-		It lands in Claude Code, Codex, your editor, or any chat box, with your project’s names spelled right and
-		the “um” gone. Transcribed on your Mac in about 50 ms.
+		<strong>Hold a key, speak, let go.</strong>
+		Your prompt lands in Claude Code, Codex, or any chat box, with your project’s names spelled right and the “um” gone.
 	</p>
 	<div class="actions" data-place="hero">
 		<a class="button primary" href={DOWNLOAD_URL}>
 			{@render apple()}
 			Download for macOS
 		</a>
-		<a class="button secondary" href={docHref('/docs')}>Read the docs</a>
+		<a class="button secondary" href={GITHUB_URL}>
+			<Icon name="github" size={16} />
+			Star on GitHub
+		</a>
 	</div>
-	<p class="fine">macOS 15 or later on Apple silicon · No&nbsp;account · No&nbsp;subscription</p>
+	<p class="fine">
+		<span>macOS 15 or later on Apple silicon</span>
+		<span>No account</span>
+		<span>No subscription</span>
+	</p>
 </Hero>
 
 <section id="numbers" class="beat" aria-labelledby="numbers-title">
@@ -236,163 +360,158 @@
 	description="A good prompt carries context: what you tried, what broke, what you want next. Most dictation clips your first word, pastes a “Thank you.” you never said, or loses your words when the paste fails. Tony starts listening the instant your key goes down, and your voice never leaves the Mac."
 >
 	{#snippet after()}
-		<ol class="cells">
-			{#each steps as step, index (step.title)}
-				<li class="rise">
-					<span class="idx" aria-hidden="true">{pad(index + 1)}</span>
-					<h3>{step.title}</h3>
-					<p>{step.body}</p>
-				</li>
-			{/each}
-		</ol>
+		{@render cells(steps, { ordered: true })}
 	{/snippet}
 </SectionHeading>
 
 <FeatureRow
 	id="prompting"
-	beat={beat('prompting', 'Prompting')}
-	mirrored
-	title="Made for talking to agents"
-	body="Agents need the exact names: the library, the service, the table. Add yours under Your words and Tony spells them your way, while the filler words come out."
+	beat={beat('prompting', 'Long prompts')}
+	title="Talk for minutes. Wait for none."
+	body="A caption buds out of the pill and shows your words about half a second after you say them, five lines at a time. Tony transcribes at each pause while you talk, so letting go is as instant after a long ramble as after one sentence."
 	href={doc('ai-agents')}
 	linkLabel="Prompting AI agents"
 	checks={[
 		'Works in Terminal, VS Code, Malini, and any chat box',
-		'Esc cancels and keeps your words, one click from Paste',
-		'Mid-prompt, no stray capital and no extra space',
+		'Double-tap your key to talk hands-free',
+		'Esc cancels, and nothing is typed',
 	]}
 >
-	<div class="card said">
-		<p class="label">You say</p>
-		<blockquote>
-			<span class="filler">Um,</span> so the <span class="heard">super base</span> migration fails. Can you,
-			<span class="filler">uh,</span> check the policies?
-		</blockquote>
-		<p class="label">Tony types</p>
-		<p class="typed">
-			So the <span class="word">Supabase</span> migration fails. Can you check the policies?
-		</p>
-		<p class="note">With Supabase in your words.</p>
-	</div>
+	<Media
+		clip="long"
+		width={1440}
+		height={936}
+		r={24}
+		alt="A new chat with an assistant. A voice plans three days in Lisbon for 21 seconds: the caption above Tony’s pill grows to five lines, then scrolls up as each new word fades in. When the voice stops, the caption flows back into the pill, and the whole prompt lands in the chat box 86 ms later."
+	/>
 </FeatureRow>
 
 <FeatureRow
-	id="fast"
-	beat={beat('fast', 'Speed')}
-	title="Fast, from the first word"
-	body="A sentence takes about 50 ms on the Neural Engine. Tony transcribes in the background at each pause while you keep talking, so letting go is as instant after a five-minute brief as after one line."
-	href={doc('speed-and-accuracy')}
-	linkLabel="Speed and accuracy"
-	checks={[
-		'Capture starts on key down, not a beat later',
-		'Warm at launch, so the first dictation is as quick as the hundredth',
-		'Between dictations the mic is closed and the CPU rests',
-	]}
->
-	<figure class="card">
-		<table>
-			<caption>How long Tony takes to transcribe</caption>
-			<thead>
-				<tr><th scope="col">You speak for</th><th scope="col">Tony transcribes it in</th></tr>
-			</thead>
-			<tbody>
-				{#each speed as row (row.spoken)}
-					<tr><td>{row.spoken}</td><td class="figure">{row.time}</td></tr>
-				{/each}
-			</tbody>
-		</table>
-		<figcaption>
-			Parakeet Ultra on the Neural Engine of a MacBook Pro with M5 Pro, median of 5 runs. The clips were read
-			by a macOS voice, and every one came out word for word.
-		</figcaption>
-	</figure>
-</FeatureRow>
-
-<FeatureRow
-	id="accurate"
-	beat={beat('accurate', 'Accuracy')}
+	id="words"
+	beat={beat('words', 'Your words')}
 	mirrored
-	title="Accurate, in 25 languages"
-	body="Tony runs Parakeet Ultra: NVIDIA’s Parakeet TDT v3, post-trained by Moondream to make fewer errors on every benchmark they report. It detects your language as you speak, and you can switch mid-dictation."
+	title="Your words, spelled your way."
+	body="Add the names, brands, and jargon you use, and “tail scale” lands as Tailscale. A second, small model checks each one against your voice, so a word swaps in only where you said it."
+	href={doc('your-words')}
+	linkLabel="Your words"
+	checks={[
+		'The first guess blurs into your word in place',
+		'Filler words out, commas and capitals kept',
+		'Mid-sentence, no stray capital and no extra space',
+	]}
+>
+	<Media
+		clip="words"
+		width={1440}
+		height={936}
+		r={24}
+		alt="A team chat channel. A voice says “Can you add Tailscale to the staging boxes and ping me on Vercel when the preview is up?” The caption first shows “tail scale”, which blurs into “Tailscale” in place, and the message lands in the composer with Tailscale and Vercel spelled right."
+	/>
+</FeatureRow>
+
+<FeatureRow
+	id="languages"
+	beat={beat('languages', 'Languages')}
+	title="25 languages, detected as you speak."
+	body="English, German, French, Spanish, Polish, Ukrainian, and the rest of Europe. Switch between them without a setting, even mid-dictation: where the model loses track of the switch, Tony transcribes each language on its own."
 	href={doc('languages')}
 	linkLabel="All 25 languages"
 	checks={[
-		'Punctuation and capitals, written by the model',
-		'Switch languages mid-dictation, with no setting to touch',
-		'Silence types nothing: no phantom “Thank you.”',
+		'Punctuation, capitals, and accents included',
+		'Filler words out in every language',
+		'Or pin the ones you use in Settings',
 	]}
 >
-	<figure class="card">
-		<table>
-			<caption>English word error rate, lower is better</caption>
-			<thead>
-				<tr>
-					<th scope="col">Model</th>
-					<th scope="col">Error rate</th>
-					<th scope="col">Parameters</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each models as model (model.name)}
-					<tr class:tony={model.tony}>
-						<td>
-							{model.name}
-							{#if model.suffix}<span class="nowrap">{model.suffix}</span>{/if}
-						</td>
-						<td class="figure">{model.wer}</td>
-						<td class="figure">{model.params}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-		<figcaption>
-			Averages over the
-			<a href="https://huggingface.co/spaces/hf-audio/open_asr_leaderboard">Open ASR Leaderboard</a>
-			English sets: Parakeet from
-			<a href="https://huggingface.co/moondream/parakeet-ultra">Moondream’s model card</a>, Whisper from the
-			<a href="https://arxiv.org/abs/2510.06961">leaderboard paper</a>.
-		</figcaption>
-	</figure>
+	<Media
+		clip="languages"
+		width={1440}
+		height={936}
+		r={24}
+		alt="A new email to Ania Kowalska about a Thursday meeting. A voice speaks Polish, and the caption fills with Polish words, accents and all: “Cześć, spotkanie z klientem przenosimy na czwartek. Przygotuję prezentację, a ty wyślij proszę notatki z ostatniego tygodnia. Dzięki.” The text lands in the body of the email."
+	/>
 </FeatureRow>
+
+<section id="fast" class="beat flush" aria-labelledby="fast-title">
+	<div class="wrap">
+		<BeatLabel {...beat('fast', 'Speed')} />
+		<div class="speed">
+			<p class="reading rise">
+				<span class="ms"><span class="paint">50</span><span class="unit">ms</span></span>
+				<span class="from">About this long for a sentence, on the Neural Engine</span>
+			</p>
+			<div class="rise">
+				<h2 id="fast-title">
+					<span>Let go.</span>
+					<span class="quiet">It is already there.</span>
+				</h2>
+				<p class="sub">
+					Tony loads the model at launch and transcribes at each pause while you talk, so the first dictation of
+					the day is as quick as the hundredth, and a five-minute brief lands as fast as one line.
+				</p>
+				<a class="arrow-link more" href={doc('speed-and-accuracy')}>
+					Speed and accuracy
+					<Arrow class="ahead" />
+				</a>
+			</div>
+		</div>
+		{@render chart(
+			'Milliseconds to transcribe, by how long you speak',
+			speed.map((row) => ({ ...row, share: row.ms / slowest, value: `${row.ms} ms`, tony: true })),
+			'A MacBook Pro with M5 Pro, median of 5 runs, on clips read by a macOS voice that all came out word for word.',
+		)}
+	</div>
+</section>
+
+<SectionHeading
+	id="accurate"
+	beat={beat('accurate', 'Accuracy')}
+	split
+	title="One of the most accurate open models."
+	quiet="Running on your Mac."
+	description="Tony runs Parakeet Ultra: NVIDIA’s Parakeet TDT v3, post-trained by Moondream to make fewer errors on every benchmark they report. Across 25 languages it cuts the error rate from 11.6% to 9.6%, and in background noise from 6.7% to 5.8%."
+>
+	{#snippet after()}
+		{@render chart(
+			'English word error rate, lower is better',
+			models.map((row) => ({ ...row, share: row.wer / worst, value: `${row.wer.toFixed(2)}%` })),
+			sources,
+		)}
+	{/snippet}
+</SectionHeading>
+
+{#snippet sources()}
+	Averaged over the
+	<a href="https://huggingface.co/spaces/hf-audio/open_asr_leaderboard">Open ASR Leaderboard</a>
+	English sets: Parakeet from
+	<a href="https://huggingface.co/moondream/parakeet-ultra">Moondream’s model card</a>, Whisper from the
+	<a href="https://arxiv.org/abs/2510.06961">leaderboard paper</a>.
+{/snippet}
 
 <SectionHeading
 	id="stats"
 	beat={beat('stats', 'Menu bar')}
 	title="Everything Tony did for you."
 	quiet="One click away, in the menu bar."
-	description="Click Tony in the menu bar for a glass panel with your last dictation, your stats, and Settings. Like the pill, it never takes focus from your app, so Paste lands where you were typing."
+	description="Click Tony in the menu bar for a glass panel: your last dictation, the words you dictated and the time they saved, your pace, your streak, and six months at a glance. Settings sits one page over, with the four choices people really differ on."
 >
 	{#snippet after()}
-		<div class="panels">
-			<figure class="rise">
-				<img
-					class="shot"
-					src={panelHome}
-					width="1038"
-					height="1500"
-					loading="lazy"
-					decoding="async"
-					alt="The menu bar panel: the last dictation with Copy and Paste, 65,292 words dictated, 20 hours saved over typing, 152 words a minute, 100 ms from key up to text, a 25-day streak, six months of activity, and the apps you dictate into"
-				/>
+		<div class="stage">
+			<StageLight side="right" caster={panel?.firstElementChild ?? undefined} bind:lit={panelLit} />
+			<figure class={['panel', 'rise', { lit: panelLit }]}>
+				<div class="shot" bind:this={panel}>
+					<Media
+						still="panel"
+						width={1920}
+						height={1522}
+						r={32}
+						alt="Tony’s menu bar panel and its Settings, side by side in Liquid Glass. Home: Hold fn to dictate, the last dictation with Copy and Paste, 54,934 words dictated, 16h 50m saved over typing, 151 wpm speaking pace, 75 ms from key up to text, a 31-day streak, 130 days in the last 6 months, and the apps you dictate into. Settings: the fn key, the microphone on Automatic, English and Polish, your words as tags, Share usage stats, Open at login, and the version."
+					/>
+				</div>
 				<figcaption>
-					<strong>Your stats.</strong> Words dictated and the time they saved, your pace, how fast your text
-					lands, your streak, and six months of activity.
+					Made-up stats, drawn by Tony itself. Stats are counts by day and by app, kept on your Mac, never what
+					you said.
 					<a href={doc('menu-bar')}>The menu bar panel</a>
-				</figcaption>
-			</figure>
-			<figure class="rise">
-				<img
-					class="shot"
-					src={panelSettings}
-					width="1038"
-					height="1500"
-					loading="lazy"
-					decoding="async"
-					alt="Settings in the panel: the key, the microphone, the language, your words as tags, and Open at login"
-				/>
-				<figcaption>
-					<strong>Four settings.</strong> The key, the mic, the languages, and your words: where people really
-					differ. Everything else is a tuned default.
+					·
 					<a href={doc('settings')}>Settings</a>
 				</figcaption>
 			</figure>
@@ -400,29 +519,31 @@
 	{/snippet}
 </SectionHeading>
 
-<FeatureRow
+<SectionHeading
 	id="everywhere"
 	beat={beat('everywhere', 'Every app')}
-	title="Works in every app"
-	body="Native apps, Safari and Chrome, Slack and VS Code, Terminal: if it takes paste, it takes Tony. Every dictation stays on your clipboard, so when a paste can’t land, ⌘V brings it back."
-	href={docHref('/docs')}
-	linkLabel="How Tony works"
-	checks={[
-		'QWERTY, Dvorak, and Cyrillic layouts all paste correctly',
-		'Undo is one ⌘Z: a dictation lands as a single paste',
-		'Your music fades out while you talk, and back in after',
-	]}
+	split
+	title="Works in every app."
+	quiet="And stays out of the way."
+	description="Native apps, Safari and Chrome, Slack and VS Code, Terminal: if it takes paste, it takes Tony. Like the pill, the panel never takes focus from your app, so the text lands where you were typing."
 >
-	<img
-		class="shot notice"
-		src={notice}
-		width="1200"
-		height="360"
-		loading="lazy"
-		decoding="async"
-		alt="The pill says 1Password has secure input on: press ⌘V to paste"
-	/>
-</FeatureRow>
+	{#snippet after()}
+		{@render cells(everywhere, { four: true })}
+	{/snippet}
+</SectionHeading>
+
+<SectionHeading
+	id="bugs"
+	beat={beat('bugs', 'Under the hood')}
+	split
+	title="The usual dictation bugs."
+	quiet="Designed out."
+	description="Each one shipped in a real dictation app. Tony is built so none of them can happen, from the first commit."
+>
+	{#snippet after()}
+		{@render cells(bugs, { ordered: true, four: true })}
+	{/snippet}
+</SectionHeading>
 
 <SectionHeading
 	id="private"
@@ -431,20 +552,15 @@
 	quiet="Neither do your prompts."
 	description="Prompts carry your codebase’s names and your half-formed ideas. Tony hears them on your Mac, and the only place they go is the app you paste into."
 >
-	<a class="arrow-link more" href={doc('privacy')}>
-		Privacy and offline use
-		<Arrow class="ahead" />
-	</a>
+	<div class="buttons">
+		<a class="button secondary small" href={GITHUB_URL}>
+			<Icon name="github" size={14} />
+			Star on GitHub
+		</a>
+		<a class="button secondary small" href={doc('privacy')}>Privacy and offline use</a>
+	</div>
 	{#snippet after()}
-		<ul class="cells">
-			{#each trust as item, index (item.title)}
-				<li class="rise">
-					<span class="idx" aria-hidden="true">{pad(index + 1)}</span>
-					<h3>{item.title}</h3>
-					<p>{item.body}</p>
-				</li>
-			{/each}
-		</ul>
+		{@render cells(trust)}
 	{/snippet}
 </SectionHeading>
 
@@ -519,12 +635,50 @@
 						</a>
 						<a class="button secondary" href={doc('install')}>Install guide</a>
 					</div>
-					<p class="fine">Free and open source · AGPL-3.0</p>
+					<p class="fine"><span>Free and open source</span> <span>AGPL-3.0</span></p>
 				</div>
 			</div>
 		</div>
 	</div>
 </section>
+
+<!-- Numbered cells under a heading, each a title and a line: three to a row, or four, which wrap to two, then one. -->
+{#snippet cells(items: readonly Cell[], { ordered = false, four = false } = {})}
+	<svelte:element this={ordered ? 'ol' : 'ul'} class={['cells', { four }]}>
+		{#each items as item, index (item.title)}
+			<li class="rise">
+				<span class="idx" aria-hidden="true">{pad(index + 1)}</span>
+				<h3>{item.title}</h3>
+				<p>{item.body}</p>
+			</li>
+		{/each}
+	</svelte:element>
+{/snippet}
+
+<!-- Bars drawn to scale against the longest, each ending with its value; Tony's are painted. -->
+{#snippet chart(
+	caption: string,
+	rows: readonly { name: string; note: string; share: number; value: string; tony?: boolean }[],
+	note: string | Snippet,
+)}
+	<figure class="chart">
+		<figcaption class="rise">{caption}</figcaption>
+		<ul>
+			{#each rows as row (row.name)}
+				<li class={['rise', { tony: row.tony }]} style:--share={row.share}>
+					<span class="who"><span class="name">{row.name}</span> {row.note}</span>
+					<span class="track">
+						<span class="bar" aria-hidden="true"></span>
+						{row.value}
+					</span>
+				</li>
+			{/each}
+		</ul>
+		<p class="source rise">
+			{#if typeof note === 'string'}{note}{:else}{@render note()}{/if}
+		</p>
+	</figure>
+{/snippet}
 
 {#snippet apple()}
 	<svg class="apple" viewBox="4 3.1 14.8 18.2" width="13" height="16" aria-hidden="true" fill="currentColor">
@@ -535,17 +689,18 @@
 {/snippet}
 
 <style>
-	/* The hero's lede, buttons, and fine print, under its headline (`Hero.svelte`). */
+	/* The hero's pitch beside its headline (`Hero.svelte`): the lede, the buttons, and the fine print, as wide as the
+	   buttons. */
 
 	.lede {
 		--rise: 3px;
 		--blur: 10px;
 		--duration: 1300ms;
 		--delay: 150ms;
-		max-width: 640px;
-		margin-top: 24px;
+		max-width: 560px;
+		margin-bottom: 24px;
 		color: var(--fg-muted);
-		font-size: 19px;
+		font-size: 16px;
 		line-height: 1.55;
 		text-wrap: pretty;
 	}
@@ -563,7 +718,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 12px;
-		margin-top: 32px;
 	}
 
 	.apple {
@@ -576,21 +730,36 @@
 		--duration: 1300ms;
 		--delay: 300ms;
 		margin-top: 16px;
+		margin-left: -0.6em;
+		clip-path: inset(-1em -1em -1em 0.6em);
 		color: var(--fg-muted);
 		font-size: 13px;
 		line-height: 1.55;
+		text-wrap: balance;
 	}
 
-	/* The README's images are real windows on their wallpaper, cornered 40px at their natural size. */
-	.shot {
-		display: block;
-		width: 100%;
-		height: auto;
-		border-radius: calc(100cqi * 40 / 1200);
-		box-shadow:
-			0 0 0 1px var(--ring-faint),
-			0 2px 4px rgb(0 0 0 / 0.08),
-			0 32px 64px -24px rgb(0 0 0 / 0.45);
+	/* Each item leads with its dot, and the line starts one dot early behind the clip, so no line starts or ends on a
+	   dot however the items wrap. */
+	.fine span {
+		white-space: nowrap;
+	}
+
+	.fine span::before {
+		content: '·';
+		display: inline-block;
+		width: 0.6em;
+	}
+
+	.buttons {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 12px;
+		margin-top: 12px;
+	}
+
+	.more {
+		margin-top: 24px;
 	}
 
 	/* Tony in numbers: a readout, each number poster-sized with a dotted leader to what it counts. */
@@ -630,7 +799,7 @@
 		text-align: right;
 	}
 
-	/* Cells: three across, split by hairlines from rail to rail. */
+	/* Cells: three across, or four, split by hairlines from rail to rail. */
 
 	.cells {
 		display: grid;
@@ -649,6 +818,14 @@
 
 	.cells li + li {
 		border-left: 1px solid var(--frame);
+	}
+
+	.four {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+
+	.four li:nth-child(4n + 1) {
+		border-left: 0;
 	}
 
 	.idx {
@@ -694,206 +871,208 @@
 		text-wrap: pretty;
 	}
 
-	.more {
-		margin-top: 20px;
-	}
-
 	.cells .arrow-link {
 		margin-top: auto;
 		padding-top: 8px;
 	}
 
-	/* The menu bar panel: two windows on a plate from rail to rail. */
+	/* Speed: the page's one poster numeral, painted, beside its headline. No letter-spacing: it would narrow the
+	   numeral's box past its ink, and the paint, clipped to that box, would cut its right side. */
 
-	.panels {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		margin: 72px calc(-1 * max(var(--pad), env(safe-area-inset-left))) 0;
-		border-top: 1px solid var(--frame);
-		background: var(--panel);
+	.flush {
+		padding-bottom: 0;
 	}
 
-	.panels figure {
+	.speed {
+		display: grid;
+		grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+		gap: 32px 80px;
+		align-items: center;
+	}
+
+	.reading {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 24px;
-		margin: 0;
-		padding: 56px var(--pad);
-		container-type: inline-size;
+		gap: 16px;
 	}
 
-	.panels figure + figure {
-		border-left: 1px solid var(--frame);
-	}
-
-	.panels .shot {
-		max-width: 400px;
-		border-radius: calc(min(100cqi, 400px) * 40 / 1038);
-	}
-
-	.panels figcaption {
-		max-width: 400px;
-		color: var(--fg-muted);
-		font-size: 15px;
-		line-height: 1.6;
-		text-wrap: pretty;
-	}
-
-	.panels figcaption strong {
-		color: var(--fg-default);
+	.ms {
+		display: flex;
+		align-items: baseline;
+		gap: 0.02em;
+		margin: -0.06em 0 -0.1em -0.05em;
+		font-size: clamp(160px, 22vw, 300px);
 		font-weight: 550;
+		line-height: 1;
 	}
 
-	.notice {
-		max-width: 600px;
-		border-radius: calc(min(100cqi, 600px) * 40 / 1200);
+	.paint {
+		background: var(--painting);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
 	}
 
-	/* A feature's window: a card that reads as one of Tony's own panels. */
-
-	.card {
-		width: 100%;
-		max-width: 560px;
-		margin: 0;
-		padding: 8px 24px 20px;
-		border-radius: 14px;
-		background: var(--surface-elevated);
-		box-shadow:
-			0 0 0 1px var(--ring-faint),
-			0 2px 4px rgb(0 0 0 / 0.08),
-			0 32px 64px -24px rgb(0 0 0 / 0.45);
+	.unit {
+		color: var(--fg-faint);
+		font-size: 0.32em;
+		letter-spacing: -0.03em;
 	}
 
-	.card table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 15px;
-	}
-
-	.card caption,
-	.said .label {
-		padding: 14px 0 10px;
-		color: var(--fg-secondary);
+	.from {
+		color: var(--fg-faint);
 		font-family: var(--mono);
 		font-size: 12px;
 		line-height: 16px;
-		text-align: left;
 	}
 
-	.card th,
-	.card td {
-		padding: 12px 12px 12px 0;
-		border-bottom: 1px solid var(--border-default);
-		text-align: left;
-		vertical-align: bottom;
-	}
-
-	.card th:last-child,
-	.card td:last-child {
-		padding-right: 0;
-	}
-
-	.card th {
-		color: var(--fg-muted);
-		font-size: 13px;
-		font-weight: 500;
-	}
-
-	.card th:not(:first-child) {
-		text-align: right;
-	}
-
-	.card td {
-		color: var(--fg-secondary);
-	}
-
-	.card tbody tr:last-child td {
-		border-bottom: 0;
-	}
-
-	.card .figure {
-		color: var(--fg-default);
-		font-family: var(--mono);
-		font-size: 14px;
-		font-variant-numeric: tabular-nums;
-		text-align: right;
-		white-space: nowrap;
-	}
-
-	.card tr.tony td {
-		color: var(--fg-default);
+	h2 {
+		font-size: clamp(30px, 3.4vw, 40px);
 		font-weight: 550;
+		line-height: 1.1;
+		letter-spacing: -0.03em;
+		text-wrap: balance;
 	}
 
-	.card tr.tony td:first-child::before {
-		content: '';
-		display: inline-block;
-		width: 8px;
-		height: 8px;
-		margin-right: 8px;
-		border-radius: 50%;
-		background: var(--brand);
-		vertical-align: 1px;
+	.speed h2 {
+		font-size: clamp(34px, 4.6vw, 52px);
+		line-height: 1.06;
+		letter-spacing: -0.035em;
 	}
 
-	.card figcaption {
-		margin-top: 14px;
-		color: var(--fg-muted);
-		font-size: 12px;
-		line-height: 1.55;
-		text-wrap: pretty;
+	.speed h2 span {
+		display: block;
 	}
 
-	.said {
-		padding: 14px 28px 24px;
-	}
-
-	.said blockquote {
-		margin: 0 0 16px;
-		color: var(--fg-secondary);
-		font-size: 17px;
-		line-height: 1.6;
-		text-wrap: pretty;
-	}
-
-	.filler {
+	.quiet {
 		color: var(--fg-faint);
-		text-decoration: line-through;
 	}
 
-	.heard {
-		text-decoration: underline wavy var(--fg-faint);
-		text-decoration-thickness: 1px;
-		text-underline-offset: 4px;
+	/* A chart from rail to rail: bars to scale against the longest, which ends with its value at the edge. */
+
+	.chart {
+		margin: 72px calc(-1 * max(var(--pad), env(safe-area-inset-left))) 0;
+		padding: 40px max(var(--pad), env(safe-area-inset-left));
+		border-top: 1px solid var(--frame);
 	}
 
-	.typed {
-		padding: 16px 18px;
-		border-radius: 10px;
-		background: var(--surface-well);
-		box-shadow: inset 0 0 0 1px var(--border-subtle);
-		color: var(--fg-default);
+	.chart figcaption,
+	.source {
+		color: var(--fg-faint);
+		font-family: var(--mono);
+		font-size: 12px;
+		line-height: 24px;
+	}
+
+	.chart ul {
+		display: grid;
+		gap: 20px;
+		margin-top: 28px;
+		list-style: none;
+	}
+
+	.chart li {
+		display: grid;
+		grid-template-columns: 200px minmax(0, 1fr);
+		gap: 8px 24px;
+		align-items: center;
+	}
+
+	.who {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		color: var(--fg-faint);
+		font-size: 13px;
+		line-height: 1.4;
+	}
+
+	.name {
+		color: var(--fg-muted);
 		font-size: 17px;
-		line-height: 1.6;
+		font-weight: 550;
+		letter-spacing: -0.01em;
+	}
+
+	.track {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		color: var(--fg-muted);
+		font-family: var(--mono);
+		font-size: 13px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.bar {
+		flex: none;
+		width: max(3px, calc((100% - 7ch - 14px) * var(--share)));
+		height: 10px;
+		border-radius: 3px;
+		background: var(--border-default);
+	}
+
+	.tony .name,
+	.tony .track {
+		color: var(--fg-default);
+	}
+
+	/* One painting across the scale, so a shorter bar shows less of it. */
+	.tony .bar {
+		height: 14px;
+		background: var(--painting) 0 0 / calc(100% / var(--share)) 100%;
+	}
+
+	.source {
+		max-width: 720px;
+		margin-top: 32px;
+		line-height: 20px;
 		text-wrap: pretty;
 	}
 
-	.word {
-		font-weight: 550;
-		text-decoration: underline 2px var(--brand);
-		text-underline-offset: 4px;
+	/* The menu bar panel on a lit stage from rail to rail, like a feature's window. */
+
+	.stage {
+		position: relative;
+		margin: 72px calc(-1 * max(var(--pad), env(safe-area-inset-left))) 0;
+		padding: 64px max(var(--pad), env(safe-area-inset-left));
+		border-top: 1px solid var(--frame);
 	}
 
-	.said .note {
-		margin-top: 12px;
+	.panel {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 28px;
+		max-width: 880px;
+		margin: 0 auto;
+	}
+
+	.shot {
+		width: 100%;
+	}
+
+	/* Lit, the stage draws the panel's long shadow, which a CSS shadow draws in steps. */
+	.lit .shot > :global(*) {
+		box-shadow:
+			0 0 0 1px var(--ring-faint),
+			0 2px 4px rgb(0 0 0 / 0.08);
+	}
+
+	.panel figcaption {
+		max-width: 560px;
 		color: var(--fg-muted);
-		font-size: 12px;
+		font-size: 14px;
+		line-height: 1.6;
+		text-align: center;
+		text-wrap: balance;
 	}
 
 	.answer :global(a),
 	.faq-intro a,
-	figcaption a {
+	.source a,
+	.panel figcaption a {
 		color: var(--fg-default);
 		font-weight: 500;
 		text-decoration: underline;
@@ -902,7 +1081,7 @@
 		text-underline-offset: 3px;
 	}
 
-	.card figcaption a {
+	.source a {
 		color: inherit;
 		font-weight: 400;
 		text-decoration-thickness: 1px;
@@ -925,14 +1104,6 @@
 		gap: 20px;
 	}
 
-	h2 {
-		font-size: clamp(30px, 3.4vw, 40px);
-		font-weight: 550;
-		line-height: 1.1;
-		letter-spacing: -0.03em;
-		text-wrap: balance;
-	}
-
 	.faq-intro p,
 	.sub {
 		max-width: 560px;
@@ -940,6 +1111,10 @@
 		font-size: 18px;
 		line-height: 1.55;
 		text-wrap: pretty;
+	}
+
+	.speed .sub {
+		margin-top: 20px;
 	}
 
 	.faq-intro a {
@@ -1085,10 +1260,6 @@
 		margin-top: 20px;
 	}
 
-	.close-actions .actions {
-		margin-top: 0;
-	}
-
 	@media (hover: hover) and (pointer: fine) {
 		summary:hover .plus::before,
 		summary:hover .plus::after {
@@ -1097,14 +1268,14 @@
 
 		.answer :global(a:hover),
 		.faq-intro a:hover,
-		figcaption a:hover {
+		.source a:hover,
+		.panel figcaption a:hover {
 			text-decoration-color: var(--fg-default);
 		}
 	}
 
 	@media (max-width: 1023px) {
-		.cells,
-		.panels {
+		.cells {
 			grid-template-columns: minmax(0, 1fr);
 			margin-top: 48px;
 		}
@@ -1113,23 +1284,36 @@
 			padding-block: 32px;
 		}
 
-		.cells li + li,
-		.panels figure + figure {
+		.cells li + li {
 			border-left: 0;
 		}
 
-		.panels figure + figure {
-			border-top: 1px solid var(--frame);
+		.four {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.four li:nth-child(even) {
+			border-left: 1px solid var(--frame);
+		}
+
+		.chart {
+			margin-top: 48px;
+			padding-block: 32px;
+		}
+
+		.stage {
+			margin-top: 48px;
+			padding-block: 40px;
 		}
 	}
 
 	@media (max-width: 859px) {
-		.lede,
 		.faq-intro p,
 		.sub {
 			font-size: 17px;
 		}
 
+		.speed,
 		.faq {
 			grid-template-columns: minmax(0, 1fr);
 			gap: 32px;
@@ -1171,21 +1355,23 @@
 		}
 	}
 
-	@media (max-width: 639px) {
-		.card {
-			padding: 4px 16px 16px;
-		}
-
-		.card table {
-			font-size: 14px;
-		}
-
-		.said {
-			padding: 12px 18px 18px;
-		}
-	}
-
 	@media (max-width: 559px) {
+		.four {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.four li:nth-child(even) {
+			border-left: 0;
+		}
+
+		.chart li {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.stage {
+			padding: 32px 12px;
+		}
+
 		summary {
 			grid-template-columns: minmax(0, 1fr) 16px;
 		}

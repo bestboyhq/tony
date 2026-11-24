@@ -1,0 +1,397 @@
+<!doctype html>
+<!-- The desktop behind the README's HUD recordings and panel still, drawn at 2x by scripts/readme/make.ts at any size:
+     ?theme=dark|light&app=terminal|assistant|chat|mail|desk&text=<what Tony types>[&landed]; desk has no window. A HUD
+     scene is 8 pt taller than its clip: Tony's window puts the pill 26 pt above its foot, and on a real screen its
+     panel reaches 8 pt below the edge. -->
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			:root {
+				font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+				-webkit-font-smoothing: antialiased;
+			}
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			html,
+			body {
+				width: 100vw;
+				height: 100vh;
+				overflow: hidden;
+			}
+
+			/* The wallpaper: the brand's painting as soft light, so the glass has color to bend. */
+			.desk {
+				position: relative;
+				width: 100vw;
+				height: 100vh;
+				overflow: hidden;
+				background: var(--base);
+			}
+			.desk::before {
+				content: '';
+				position: absolute;
+				inset: -20%;
+				background:
+					radial-gradient(38% 46% at 16% 18%, var(--a), transparent 70%),
+					radial-gradient(34% 40% at 82% 12%, var(--b), transparent 70%),
+					radial-gradient(42% 44% at 30% 92%, var(--c), transparent 70%),
+					radial-gradient(40% 46% at 74% 88%, var(--d), transparent 70%),
+					radial-gradient(30% 30% at 52% 62%, var(--e), transparent 70%);
+				filter: blur(30px) saturate(1.1);
+			}
+			.dark {
+				--base: #0d0d16;
+				--a: rgb(25 87 250 / 0.75);
+				--b: rgb(99 101 205 / 0.55);
+				--c: rgb(158 101 148 / 0.7);
+				--d: rgb(237 62 17 / 0.62);
+				--e: rgb(251 132 0 / 0.38);
+				color-scheme: dark;
+			}
+			.light {
+				--base: #f4eff8;
+				--a: rgb(139 172 255 / 0.85);
+				--b: rgb(196 180 255 / 0.8);
+				--c: rgb(240 186 222 / 0.85);
+				--d: rgb(255 180 130 / 0.9);
+				--e: rgb(255 214 170 / 0.7);
+				color-scheme: light;
+			}
+
+			/* A window as macOS 26 draws it: a large continuous corner, a hairline, and a soft shadow. */
+			.window {
+				position: absolute;
+				left: 50%;
+				top: 22px;
+				width: 742px;
+				height: 340px;
+				translate: -50% 0;
+				display: flex;
+				flex-direction: column;
+				border-radius: 16px;
+				overflow: hidden;
+				background: var(--win);
+				box-shadow:
+					0 0 0 0.5px var(--edge),
+					0 22px 48px -10px rgb(0 0 0 / 0.38),
+					0 4px 12px rgb(0 0 0 / 0.12);
+			}
+			.dark .window {
+				--win: rgb(24 24 27 / 0.97);
+				--edge: rgb(255 255 255 / 0.16);
+				--ink: #e8e8ea;
+				--dim: #8b8b93;
+				--faint: #5d5d66;
+				--line: rgb(255 255 255 / 0.12);
+				--accent: #f0782f;
+				--ok: #5ccf86;
+				--add: #5ccf86;
+				--del: #ff7a7a;
+				--fill: rgb(255 255 255 / 0.06);
+			}
+			.light .window {
+				--win: rgb(255 255 255 / 0.98);
+				--edge: rgb(0 0 0 / 0.14);
+				--ink: #1d1d1f;
+				--dim: #6e6e76;
+				--faint: #a1a1a8;
+				--line: rgb(0 0 0 / 0.12);
+				--accent: #d4550f;
+				--ok: #1f9d55;
+				--add: #1f9d55;
+				--del: #d33a3a;
+				--fill: rgb(0 0 0 / 0.04);
+			}
+			.titlebar {
+				flex: none;
+				position: relative;
+				height: 38px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--dim);
+				font-size: 13px;
+				font-weight: 600;
+			}
+			.lights {
+				position: absolute;
+				left: 16px;
+				top: 13px;
+				display: flex;
+				gap: 8px;
+			}
+			.lights i {
+				width: 12px;
+				height: 12px;
+				border-radius: 50%;
+				background: #ff5f57;
+				box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.12);
+			}
+			.lights i:nth-child(2) {
+				background: #febc2e;
+			}
+			.lights i:nth-child(3) {
+				background: #28c840;
+			}
+
+			/* The terminal: an agent's session, its prompt box at the foot. */
+			.term {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+				gap: 7px;
+				padding: 0 22px 16px;
+				color: var(--ink);
+				font: 12.5px/18px ui-monospace, 'SF Mono', Menlo, monospace;
+			}
+			.term p {
+				white-space: pre-wrap;
+			}
+			.dim {
+				color: var(--dim);
+			}
+			.faint {
+				color: var(--faint);
+			}
+			.ok {
+				color: var(--ok);
+			}
+			.add {
+				color: var(--add);
+			}
+			.del {
+				color: var(--del);
+			}
+			.you {
+				color: var(--dim);
+			}
+			.you b {
+				color: var(--ink);
+				font-weight: 400;
+			}
+			.prompt {
+				display: flex;
+				gap: 10px;
+				margin-top: 6px;
+				padding: 9px 14px;
+				border: 1px solid var(--line);
+				border-radius: 10px;
+			}
+			.prompt .mark {
+				color: var(--accent);
+			}
+			.caret {
+				display: inline-block;
+				width: 7.5px;
+				height: 16px;
+				margin-left: 1px;
+				vertical-align: -3px;
+				background: var(--ink);
+				opacity: 0.85;
+			}
+			.text {
+				position: relative;
+				display: block;
+				flex: 1;
+			}
+			.hidden {
+				visibility: hidden;
+			}
+			.over {
+				position: absolute;
+				inset: 0;
+			}
+			.ph {
+				color: var(--faint);
+			}
+			.hint {
+				padding: 0 15px;
+				color: var(--faint);
+				font-size: 11.5px;
+			}
+
+			/* A chat: a thread, its composer at the foot. */
+			.chat {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+				gap: 12px;
+				padding: 0 20px 16px;
+				color: var(--ink);
+				font-size: 13.5px;
+				line-height: 19px;
+			}
+			.msg {
+				display: grid;
+				grid-template-columns: 30px 1fr;
+				gap: 2px 10px;
+			}
+			.msg .face {
+				grid-row: span 2;
+				width: 30px;
+				height: 30px;
+				border-radius: 8px;
+				color: #fff;
+				font-size: 13px;
+				font-weight: 600;
+				line-height: 30px;
+				text-align: center;
+			}
+			.msg .who {
+				font-weight: 650;
+			}
+			.msg .who span {
+				margin-left: 6px;
+				color: var(--faint);
+				font-size: 11.5px;
+				font-weight: 400;
+			}
+			.composer {
+				display: flex;
+				align-items: flex-start;
+				gap: 8px;
+				min-height: 42px;
+				margin-top: 4px;
+				padding: 11px 14px;
+				border: 1px solid var(--line);
+				border-radius: 12px;
+			}
+
+			/* An assistant: the last answer, and a composer that grows with the prompt. */
+			.assistant {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				justify-content: flex-end;
+				gap: 14px;
+				padding: 0 56px 18px;
+				color: var(--ink);
+				font-size: 13.5px;
+				line-height: 20px;
+			}
+			.bubble {
+				align-self: flex-end;
+				max-width: 70%;
+				padding: 8px 14px;
+				border-radius: 16px;
+				background: var(--fill);
+			}
+			.answer p + p {
+				margin-top: 6px;
+			}
+			.ask {
+				min-height: 52px;
+				margin-top: 6px;
+				padding: 15px 18px;
+				border: 1px solid var(--line);
+				border-radius: 22px;
+				background: var(--fill);
+			}
+			.chat .caret,
+			.assistant .caret,
+			.mail .caret {
+				width: 1.5px;
+				height: 17px;
+				vertical-align: -4px;
+				background: var(--accent);
+				opacity: 1;
+			}
+
+			/* Mail: a new message, its body at the foot. */
+			.mail {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				color: var(--ink);
+				font-size: 13.5px;
+				line-height: 20px;
+			}
+			.field {
+				display: flex;
+				gap: 8px;
+				padding: 9px 22px;
+				border-bottom: 1px solid var(--line);
+			}
+			.field span {
+				color: var(--dim);
+			}
+			.body {
+				flex: 1;
+				padding: 16px 22px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="desk" id="desk">
+			<div class="window" id="window"></div>
+		</div>
+		<script>
+			const query = new URLSearchParams(location.search);
+			const theme = query.get('theme') ?? 'dark';
+			const app = query.get('app') ?? 'terminal';
+			const text = query.get('text') ?? '';
+			document.getElementById('desk').className = `desk ${theme}`;
+			const caret = '<span class="caret"></span>';
+			const esc = (text) => text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+			// The field: the text once it lands, and before that the caret and the placeholder over it, hidden, so the
+			// field is as big in both and the clip's fade from the end back to the start moves nothing.
+			const field = (placeholder = '') =>
+				query.has('landed')
+					? `<span class="text">${esc(text)}${caret}</span>`
+					: `<span class="text"><span class="hidden">${esc(text)}${caret}</span><span class="over">${caret}<span class="ph">${placeholder}</span></span></span>`;
+
+			const apps = {
+				terminal: {
+					title: 'acme-web',
+					body: () => `<div class="term">
+						<p class="you">› <b>The coupon field accepts expired codes. Fix it and add a test.</b></p>
+						<p><span class="ok">●</span> Read <span class="dim">src/checkout/coupons.ts</span></p>
+						<p><span class="ok">●</span> Edit <span class="dim">src/checkout/coupons.ts</span>  <span class="add">+9</span> <span class="del">-2</span></p>
+						<p><span class="ok">●</span> Ran <span class="dim">pnpm test checkout</span>  <span class="ok">48 passed</span></p>
+						<p class="dim">  Expired codes now fail with "This code has expired", and a test covers it.</p>
+						<div class="prompt"><span class="mark">›</span>${field()}</div>
+						<p class="hint">? for shortcuts</p>
+					</div>`,
+				},
+				assistant: {
+					title: 'New chat',
+					body: () => `<div class="assistant">
+						<div class="bubble">Is March a good time to visit Lisbon?</div>
+						<div class="answer">
+							<p>Yes. March is mild, around 15 to 19 °C, and the city is far quieter than in summer.</p>
+							<p>Expect a few rainy days, so pack a light jacket and plan one indoor stop each day.</p>
+						</div>
+						<div class="ask">${field('Ask anything')}</div>
+					</div>`,
+				},
+				chat: {
+					title: '# staging',
+					body: () => `<div class="chat">
+						<div class="msg"><div class="face" style="background:#e0864a">L</div><div class="who">Leo<span>10:31</span></div><div>The billing fix is out. Thanks for the quick reviews, everyone.</div></div>
+						<div class="msg"><div class="face" style="background:#7c5cff">M</div><div class="who">Maya<span>10:42</span></div><div>The staging preview still points at the old database.</div></div>
+						<div class="msg"><div class="face" style="background:#0ea5a4">J</div><div class="who">Jonas<span>10:44</span></div><div>I can take it after lunch. Anything else while I am in there?</div></div>
+						<div class="composer">${field('Message #staging')}</div>
+					</div>`,
+				},
+				mail: {
+					title: 'Nowa wiadomość',
+					body: () => `<div class="mail">
+						<div class="field"><span>Do:</span>Ania Kowalska</div>
+						<div class="field"><span>Temat:</span>Spotkanie w czwartek</div>
+						<div class="body">${field()}</div>
+					</div>`,
+				},
+			};
+
+			const chosen = apps[app];
+			if (chosen) document.getElementById('window').innerHTML = `<div class="titlebar"><div class="lights"><i></i><i></i><i></i></div>${chosen.title}</div>${chosen.body()}`;
+			else document.getElementById('window').remove();
+		</script>
+	</body>
+</html>

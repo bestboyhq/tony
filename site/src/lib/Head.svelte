@@ -7,8 +7,8 @@
 		description: string;
 		path: string;
 		noindex?: boolean;
-		/** Structured data, as JSON-LD. */
-		schema?: Record<string, unknown>;
+		/** Structured data, as JSON-LD: one script per object. */
+		schema?: Record<string, unknown> | readonly Record<string, unknown>[];
 	};
 
 	let { title, description, path, noindex = false, schema }: Props = $props();
@@ -17,12 +17,13 @@
 	// The hero, rendered by `pnpm og`. Social sites cache an image by its URL, and this one's changes with its content.
 	const image = `${SITE_ORIGIN}${og}`;
 	const imageAlt =
-		'Talk to your AI agents. Free, private dictation for Mac. Under the headline, Tony’s pill listens: its dot glows and nine bars follow a voice.';
+		'Talk to your AI agents. Free, private dictation for Mac. Under the headline, a coding agent’s terminal, and Tony’s pill listening at the foot of the screen, with the words it hears in a glass caption above it.';
 	// `<` escaped, so no string in the data can close the script element.
 	const jsonLd = $derived(
-		schema &&
-			`<script type="application/ld+json">${JSON.stringify(schema).replaceAll('<', '\\u003c')}</` +
-				'script>',
+		[schema ?? []]
+			.flat()
+			.map((item) => `<script type="application/ld+json">${JSON.stringify(item).replaceAll('<', '\\u003c')}</` + 'script>')
+			.join(''),
 	);
 </script>
 
